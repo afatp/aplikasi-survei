@@ -1,4 +1,4 @@
-const CACHE = 'survei-lapangan-v9';
+const CACHE = 'survei-lapangan-v10';
 const FILES = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const FILES = [
   './mobile-home.css',
   './mobile-adapter.css',
   './mobile-adapter.js',
+  './cloud-sync.css',
+  './cloud-sync.js',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png'

@@ -58,6 +58,9 @@
         <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
         <button type="button" class="zoom-btn-save" id="mobileZoomSave" title="Simpan data survei">💾 Simpan</button>
         <button type="button" class="zoom-btn-pen is-off" id="mobileTogglePen" title="Aktifkan / Nonaktifkan Pen (Mencegah layar tercoret saat digeser)">🖐️ Pen: OFF</button>
+        <button type="button" class="cloud-sync-badge" onclick="window.CloudSync?.openModal()" title="Sinkronisasi Google Drive" style="padding:3px 8px;font-size:11px;">
+          <span class="cloud-pulse-dot"></span><span>☁️ Drive</span>
+        </button>
         <div class="zoom-page-tabs" id="mobileZoomPageTabs"></div>
       </div>
       <div class="zoom-bar-row2">
@@ -74,7 +77,14 @@
       <div class="mobile-switch-banner">
         <button type="button" id="mobileGoToA4Btn">📄 Tampilkan Form Kertas Asli A4 (Bisa Zoom − / +) →</button>
       </div>
-      <div class="mobile-action-bar"><button type="button" id="mobileSave" class="is-primary">Simpan data</button><button type="button" id="mobilePrint">Cetak PDF</button>${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}</div>
+      <div class="mobile-action-bar">
+        <button type="button" id="mobileSave" class="is-primary">Simpan data</button>
+        <button type="button" id="mobilePrint">Cetak PDF</button>
+        <button type="button" class="cloud-sync-badge" onclick="window.CloudSync?.openModal()" title="Sinkronisasi Google Drive" style="padding:6px 12px;font-size:11.5px;">
+          <span class="cloud-pulse-dot"></span><span>☁️ Drive Sync</span>
+        </button>
+        ${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}
+      </div>
       <div id="mobileFields"></div>
       <p class="mobile-footer-help">Isian langsung terhubung ke formulir resmi dan tersimpan otomatis pada perangkat ini. Gunakan Ekspor JSON untuk cadangan.</p>
     </div>

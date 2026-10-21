@@ -1943,6 +1943,7 @@
 </style><link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="stylesheet" href="mobile-adapter.css?v=8">
+<link rel="stylesheet" href="cloud-sync.css">
 </head>
 
 <body>
@@ -1966,6 +1967,7 @@
         </summary>
         <div class="more-dropdown">
           <div class="dropdown-heading">DATA & PENGELOLAAN</div>
+          <button type="button" onclick="CloudSync.openModal();document.getElementById('moreActionsMenu').open=false">☁️ Sinkron Google Drive <span>⤾</span></button>
           <button type="button" onclick="exportJSON();document.getElementById('moreActionsMenu').open=false">Ekspor data JSON <span>↗</span></button>
           <label class="import-item">Impor data JSON <span>↥</span><input id="importFile" type="file" accept="application/json" hidden></label>
           <div class="dropdown-separator"></div>
@@ -1975,7 +1977,13 @@
     </div>
     <span class="status" id="status" role="status" aria-live="polite">Siap</span>
   </header>
-  <div class="projects-strip"><div class="project-strip-caption"><span class="strip-dot"></span> PROJECT</div><div class="project-bar" id="projectTabBar"></div></div>
+  <div class="projects-strip">
+    <div class="project-strip-caption"><span class="strip-dot"></span> PROJECT</div>
+    <div class="project-bar" id="projectTabBar"></div>
+    <button type="button" class="cloud-sync-badge" onclick="CloudSync.openModal()" title="Sinkronisasi Google Drive">
+      <span class="cloud-pulse-dot"></span><span>☁️ Drive</span>
+    </button>
+  </div>
   <div class="workbench">
     <aside class="workspace-sidebar" aria-label="Navigasi halaman formulir">
       <div class="sidebar-inner">
@@ -2180,6 +2188,12 @@
       saveCurrentProjectState();
       localStorage.setItem(PROJECTS_KEY, JSON.stringify({ activeProjectId, projects }));
       setStatus('Tersimpan ' + new Date().toLocaleTimeString('id-ID'));
+      if (window.CloudSync && window.CloudSync.isAutoSyncEnabled()) {
+        const activeProj = getActiveProject();
+        if (activeProj) {
+          window.CloudSync.pushProject('air', activeProj, { silent: true });
+        }
+      }
     }
 
     function clearFormForNewProject() {
@@ -3489,6 +3503,7 @@
         updateCompositeCoordinates();
       }
       renderProjectTabs();
+      window.CloudSync?.init({ type: 'air' });
       document.addEventListener('input', autosaveSoon);
       document.addEventListener('change', autosaveSoon);
     })
@@ -3652,6 +3667,7 @@
       </div>
     </div>
   </div>
+<script src="cloud-sync.js"></script>
 <script src="mobile-adapter.js?v=8" defer></script>
 </body>
 
