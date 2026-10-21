@@ -75,28 +75,58 @@
   .mobile-bottom-actions button.primary{background:#2368cb;border-color:#2368cb;color:white;flex:1.45}
   /* Keep real source sheets measurable while mobile editor is visible (canvas initialization needs measurable dimensions). */
   body:not(.mobile-preview-on) .wrapper{position:absolute!important;left:-9999px!important;top:0!important;width:794px!important;max-width:none!important;overflow:visible!important;visibility:hidden;pointer-events:none}
-  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:0 8px 125px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;display:block!important}
+  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:80px 8px 90px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;display:flex!important;flex-direction:column!important;align-items:center!important}
   body.mobile-preview-on .sheet-frame{display:block!important;position:relative!important;width:calc(794px * var(--sheet-zoom, 1))!important;height:calc(1123px * var(--sheet-zoom, 1))!important;margin:0 auto 16px!important;overflow:visible!important;flex-shrink:0!important;transition:width 0.16s ease-out, height 0.16s ease-out}
   body.mobile-preview-on.is-pinching .sheet-frame,body.mobile-preview-on.is-pinching .sheet{transition:none!important}
   body.mobile-preview-on .sheet{position:absolute!important;top:0!important;left:0!important;margin:0!important;max-width:none!important;width:794px!important;min-width:794px!important;height:1123px!important;min-height:1123px!important;transform:scale(var(--sheet-zoom, 1))!important;transform-origin:top left!important;transition:transform 0.16s ease-out;box-shadow:0 4px 18px rgba(18,48,92,0.16)!important}
   body.mobile-preview-on .mobile-app .mobile-form-content{display:none}
   body.mobile-preview-on .mobile-hero{display:none!important}
+  body.mobile-preview-on .mobile-mode-switch,
+  body.mobile-preview-on .mobile-page-nav{display:none!important}
+  body.mobile-preview-on .mobile-app{height:0!important;min-height:0!important;padding:0!important;margin:0!important;overflow:visible!important}
   body.mobile-preview-on{touch-action:pan-y}
   body.mobile-preview-on .toolbar,
   body.mobile-preview-on .projects-strip,
   body.mobile-preview-on .mobile-app,
   body.mobile-preview-on .mobile-bottom-actions{touch-action:manipulation;transform:none!important}
   .mobile-paper-tip{display:none;color:#35537d;font-size:12px;line-height:1.5;padding:10px 13px;margin-bottom:12px;border:1px solid #c9ddf4;background:#eff6ff;border-radius:11px}
-  body.mobile-preview-on .mobile-paper-tip{display:block}
-  /* Floating Zoom Bar */
-  body.mobile-preview-on .mobile-paper-zoom-bar{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom, 0px));left:50%!important;transform:translateX(-50%)!important;z-index:85;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid #c7d7eb;box-shadow:0 6px 22px rgba(18,48,92,0.22);border-radius:999px;padding:4px 7px;max-width:calc(100vw - 12px);white-space:nowrap;touch-action:manipulation}
-  .mobile-paper-zoom-bar button{min-height:35px;padding:5px 9px;border:1px solid #d4e0f0;border-radius:999px;background:#f7faff;color:#244b7a;font-size:11.5px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
-  .mobile-paper-zoom-bar button:active{background:#e2edfd;transform:scale(0.96)}
-  .mobile-paper-zoom-bar button.zoom-btn-fit{background:#2367cc;color:#fff;border-color:#2367cc;font-weight:800}
-  .mobile-paper-zoom-bar button.zoom-btn-fit.active{background:#174ea6;box-shadow:inset 0 1px 3px rgba(0,0,0,0.25)}
-  .mobile-paper-zoom-bar button.zoom-btn-fit-w{background:#edf4ff;color:#1c55a5;border-color:#b9d2f3;font-weight:750}
-  .mobile-paper-zoom-bar button.zoom-btn-fit-w.active{background:#174ea6;color:#fff;border-color:#174ea6}
-  .mobile-paper-zoom-bar .zoom-badge-btn{font-size:11.5px;font-weight:800;color:#1e3b63;min-width:42px;text-align:center;padding:5px 5px;background:#fff;border-color:#cbdbee}
+  body.mobile-preview-on .mobile-paper-tip{display:none}
+  /* Sticky Zoom Bar for Mobile */
+  .mobile-switch-banner{margin:0 0 14px}
+  .mobile-switch-banner button{width:100%;min-height:45px;border-radius:12px;background:#eef5ff;color:#1d55a3;border:1.5px dashed #5d98e8;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+  .mobile-switch-banner button:active{background:#dbe9fd}
+  .mobile-paper-zoom-bar{display:none!important}
+  body.mobile-preview-on .mobile-paper-zoom-bar{
+    position:fixed!important;
+    top:116px!important;
+    left:0!important;
+    right:0!important;
+    z-index:900!important;
+    display:flex!important;
+    flex-direction:column;
+    gap:5px;
+    background:#14325c;
+    border-bottom:2px solid #295ca3;
+    box-shadow:0 4px 18px rgba(10,26,48,0.4);
+    padding:6px 10px;
+    margin:0;
+  }
+  .zoom-bar-row1{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .zoom-btn-back{background:#235fae;color:#fff;border:1px solid #4a88db;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:750;cursor:pointer}
+  .zoom-btn-back:active{background:#1d4e8f}
+  .zoom-page-tabs{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .zoom-page-btn{background:rgba(255,255,255,0.12);color:#d1e2f6;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:650;cursor:pointer;white-space:nowrap}
+  .zoom-page-btn.active{background:#2563eb;color:#fff;border-color:#60a5fa;font-weight:800}
+  .zoom-bar-row2{display:flex;align-items:center;justify-content:space-between;gap:4px}
+  .zoom-bar-row2 button{min-height:34px;padding:4px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;font-size:11.5px;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  .zoom-bar-row2 button:active{background:rgba(255,255,255,0.25);transform:scale(0.96)}
+  .zoom-bar-row2 button.zoom-btn-fit{background:#2563eb;color:#fff;border-color:#60a5fa;font-weight:800;padding:4px 9px}
+  .zoom-bar-row2 button.zoom-btn-fit.active{background:#174ea6;box-shadow:inset 0 1px 3px rgba(0,0,0,0.3)}
+  .zoom-bar-row2 button.zoom-btn-sign{background:#1e4f91;border-color:#437ec8;font-size:16px;font-weight:900;min-width:38px;padding:2px 8px}
+  .zoom-bar-row2 .zoom-badge-btn{background:rgba(0,0,0,0.25);border-color:rgba(255,255,255,0.2);color:#93c5fd;font-size:11.5px;font-weight:800;min-width:44px;text-align:center}
+  .zoom-bar-row2 button.zoom-btn-fit-w{background:rgba(255,255,255,0.14);color:#e2e8f0}
+  .zoom-bar-row2 button.zoom-btn-fit-w.active{background:#174ea6;color:#fff;border-color:#174ea6}
+  .zoom-bar-row2 button.zoom-btn-reset{background:rgba(255,255,255,0.08);color:#cbd5e1;font-size:11px}
   .mobile-sketch-call{display:flex;flex-direction:column;align-items:stretch;gap:9px}
   .mobile-sketch-call button{padding:13px;border:0;border-radius:12px;color:#fff;background:#246bd0;font-size:14px;font-weight:800;min-height:48px}
   .mobile-sketch-call button.alt{background:#eaf2ff;color:#2c64ae}

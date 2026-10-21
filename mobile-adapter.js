@@ -53,8 +53,29 @@
     </div>
     <div class="mobile-mode-switch"><button id="mobileEasyBtn" type="button" aria-pressed="true">✎ Isi lewat HP</button><button id="mobileA4Btn" type="button" aria-pressed="false">▤ Lihat Form A4</button></div>
     <nav id="mobilePageNav" class="mobile-page-nav" aria-label="Navigasi halaman form"></nav>
-    <div class="mobile-paper-tip">🔍 <b>Mode Form A4</b>: Form kertas bisa diatur ukurannya dengan tombol zoom di bawah atau cubit layar (pinch) untuk memperbesar / memperkecil.</div>
-    <div class="mobile-form-content"><div class="mobile-action-bar"><button type="button" id="mobileSave" class="is-primary">Simpan data</button><button type="button" id="mobilePrint">Cetak PDF</button>${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}</div><div id="mobileFields"></div><p class="mobile-footer-help">Isian langsung terhubung ke formulir resmi dan tersimpan otomatis pada perangkat ini. Gunakan Ekspor JSON untuk cadangan.</p></div>
+    <div class="mobile-paper-zoom-bar" id="mobilePaperZoomBar" role="toolbar" aria-label="Pengatur Ukuran Zoom Form A4">
+      <div class="zoom-bar-row1">
+        <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
+        <div class="zoom-page-tabs" id="mobileZoomPageTabs"></div>
+      </div>
+      <div class="zoom-bar-row2">
+        <button type="button" class="zoom-btn-fit" id="mobileZoomFitPage" title="Tampilkan seluruh 1 halaman A4 penuh di layar HP">🔍 1 Hal Full</button>
+        <button type="button" class="zoom-btn-sign" id="mobileZoomOut" aria-label="Perkecil Zoom Form A4" title="Perkecil">−</button>
+        <button type="button" class="zoom-badge-btn" id="mobileZoomBadge" title="Ketuk untuk beralih mode zoom">100%</button>
+        <button type="button" class="zoom-btn-sign" id="mobileZoomIn" aria-label="Perbesar Zoom Form A4" title="Perbesar">+</button>
+        <button type="button" class="zoom-btn-fit-w" id="mobileZoomFitWidth" title="Sesuaikan selebar layar HP">↔ Lebar</button>
+        <button type="button" class="zoom-btn-reset" id="mobileZoomReset" title="Ukuran Asli 100%">100%</button>
+      </div>
+    </div>
+    <div class="mobile-paper-tip">🔍 <b>Mode Form A4 Aktif</b>: Gunakan tombol <b>[−]</b> dan <b>[+]</b> atau <b>[🔍 1 Hal Full]</b> di atas untuk menyesuaikan ukuran kertas A4.</div>
+    <div class="mobile-form-content">
+      <div class="mobile-switch-banner">
+        <button type="button" id="mobileGoToA4Btn">📄 Tampilkan Form Kertas Asli A4 (Bisa Zoom − / +) →</button>
+      </div>
+      <div class="mobile-action-bar"><button type="button" id="mobileSave" class="is-primary">Simpan data</button><button type="button" id="mobilePrint">Cetak PDF</button>${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}</div>
+      <div id="mobileFields"></div>
+      <p class="mobile-footer-help">Isian langsung terhubung ke formulir resmi dan tersimpan otomatis pada perangkat ini. Gunakan Ekspor JSON untuk cadangan.</p>
+    </div>
     <div class="mobile-bottom-actions"><button id="mobileHome">⌂ Beranda</button><button id="mobileNext" class="primary">Lanjut →</button></div>
   `;
   const main = document.querySelector('.workspace-main');
@@ -173,49 +194,58 @@
   }
   function renderPage(page){currentPage=Math.max(1,Math.min(labels.length,page));mirrors.clear();
     [...nav.children].forEach((btn,i)=>{btn.setAttribute('aria-current', i+1===currentPage?'page':'false');if(i+1===currentPage)btn.scrollIntoView({block:'nearest',inline:'nearest'});});
+    const zoomTabs = document.getElementById('mobileZoomPageTabs');
+    if(zoomTabs){
+      [...zoomTabs.children].forEach((btn,i)=>btn.classList.toggle('active', i+1===currentPage));
+    }
     if(!isAir && currentPage>=2 && currentPage<=4)renderHours(currentPage);else renderNormal(currentPage);
     document.getElementById('mobileNext').textContent=currentPage===labels.length?'Cetak / PDF': 'Lanjut →';
   }
   for(let i=0;i<labels.length;i++){const b=makeNode('button','',(i+1)+'. '+labels[i]);b.type='button';b.addEventListener('click',()=>{renderPage(i+1);if(document.body.classList.contains('mobile-preview-on'))sheets[i].scrollIntoView({behavior:'instant',block:'start'});else window.scrollTo({top:110,behavior:'instant'});});nav.append(b);}
   /* Paper Form Zoom & Scale Engine for Mobile */
-  const zoomBar = document.createElement('div');
-  zoomBar.id = 'mobilePaperZoomBar';
-  zoomBar.className = 'mobile-paper-zoom-bar';
-  zoomBar.setAttribute('role', 'toolbar');
-  zoomBar.setAttribute('aria-label', 'Pengatur Ukuran Zoom Form A4');
-  zoomBar.innerHTML = `
-    <button type="button" class="zoom-btn-fit" id="mobileZoomFitPage" title="Tampilkan seluruh halaman penuh">🔍 Halaman</button>
-    <button type="button" class="zoom-btn-fit-w" id="mobileZoomFitWidth" title="Sesuaikan selebar layar HP">↔ Lebar</button>
-    <button type="button" id="mobileZoomOut" aria-label="Perkecil Zoom" title="Perkecil">➖</button>
-    <button type="button" class="zoom-badge-btn" id="mobileZoomBadge" title="Ketuk untuk beralih mode zoom">100%</button>
-    <button type="button" id="mobileZoomIn" aria-label="Perbesar Zoom" title="Perbesar">➕</button>
-    <button type="button" id="mobileZoomReset" title="Ukuran Asli 100%">100%</button>
-  `;
-  document.body.appendChild(zoomBar);
-
   let currentZoom = 1.0;
   let activeFitMode = 'page';
   let hasUserAdjustedZoom = false;
   const wrapper = document.querySelector('.wrapper');
 
+  const zoomPageTabs = document.getElementById('mobileZoomPageTabs');
+  if(zoomPageTabs){
+    zoomPageTabs.replaceChildren();
+    for(let i=0;i<labels.length;i++){
+      const b=makeNode('button','zoom-page-btn'+(i===0?' active':''),'Hal '+(i+1));
+      b.type='button';
+      b.title=labels[i];
+      b.addEventListener('click',()=>{
+        renderPage(i+1);
+        const sheet=sheets[i];
+        if(sheet){
+          const sheetTop=sheet.offsetTop;
+          window.scrollTo({top:Math.max(0,sheetTop-200),behavior:'smooth'});
+        }
+      });
+      zoomPageTabs.append(b);
+    }
+  }
+  document.getElementById('mobileZoomBackToEasy')?.addEventListener('click',()=>setPreview(false));
+
   function getFitPageZoom() {
-    const availW = Math.max(260, window.innerWidth - 16);
-    const topH = 120;
-    const botH = 100;
-    const availH = Math.max(260, window.innerHeight - topH - botH);
+    const availW = Math.max(200, window.innerWidth - 12);
+    // Fixed headers: toolbar (66) + strip (50) + zoom bar (76) + bottom actions (70)
+    const topReserved = 265;
+    const availH = Math.max(200, window.innerHeight - topReserved);
     const fitW = availW / 794;
     const fitH = availH / 1123;
     const target = Math.min(fitW, fitH);
-    return Math.min(1.0, Math.max(0.20, Math.round(target * 100) / 100));
+    return Math.min(1.0, Math.max(0.15, Math.round(target * 100) / 100));
   }
 
   function getFitWidthZoom() {
-    const availW = Math.max(260, window.innerWidth - 16);
-    return Math.min(1.0, Math.max(0.20, Math.round((availW / 794) * 100) / 100));
+    const availW = Math.max(200, window.innerWidth - 12);
+    return Math.min(1.5, Math.max(0.15, Math.round((availW / 794) * 100) / 100));
   }
 
   function applyZoom(zoom, mode = 'custom') {
-    currentZoom = Math.min(2.0, Math.max(0.20, Math.round(zoom * 100) / 100));
+    currentZoom = Math.min(2.0, Math.max(0.15, Math.round(zoom * 100) / 100));
     activeFitMode = mode;
     if (wrapper) {
       wrapper.style.setProperty('--sheet-zoom', currentZoom);
@@ -250,7 +280,7 @@
   document.getElementById('mobileZoomFitPage')?.addEventListener('click', () => {
     hasUserAdjustedZoom = false;
     setFitPageZoom();
-    showToast('Seluruh halaman pas di layar (' + Math.round(currentZoom * 100) + '%)');
+    showToast('1 Halaman A4 tampil penuh (' + Math.round(currentZoom * 100) + '%)');
   });
 
   document.getElementById('mobileZoomFitWidth')?.addEventListener('click', () => {
@@ -260,11 +290,11 @@
   });
 
   document.getElementById('mobileZoomOut')?.addEventListener('click', () => {
-    zoomStep(-0.08);
+    zoomStep(-0.06);
   });
 
   document.getElementById('mobileZoomIn')?.addEventListener('click', () => {
-    zoomStep(0.08);
+    zoomStep(0.06);
   });
 
   document.getElementById('mobileZoomReset')?.addEventListener('click', () => {
@@ -284,6 +314,11 @@
       hasUserAdjustedZoom = false;
       setFitPageZoom();
     }
+  });
+
+  document.getElementById('mobileGoToA4Btn')?.addEventListener('click', () => {
+    setPreview(true);
+    showToast('Mode Form Kertas A4 aktif');
   });
 
   if (wrapper) {
@@ -324,14 +359,20 @@
     wrapper.addEventListener('touchcancel', endPinch, { passive: true });
   }
 
-  function setPreview(on){document.body.classList.toggle('mobile-preview-on',on);document.getElementById('mobileEasyBtn').setAttribute('aria-pressed',String(!on));document.getElementById('mobileA4Btn').setAttribute('aria-pressed',String(on));
+  function setPreview(on){
+    document.body.classList.toggle('mobile-preview-on',on);
+    document.getElementById('mobileEasyBtn').setAttribute('aria-pressed',String(!on));
+    document.getElementById('mobileA4Btn').setAttribute('aria-pressed',String(on));
+    try {
+      localStorage.setItem('survei_mobile_mode', on ? 'a4' : 'easy');
+    } catch (e) {}
     document.getElementById('mobileNext').textContent=currentPage===labels.length?'Cetak / PDF':'Lanjut →';
     if(on){
       updateMirrors();
       if(window.innerWidth<=1100 && !hasUserAdjustedZoom){
         setFitPageZoom();
       }
-      setTimeout(()=>{sheets[currentPage-1]?.scrollIntoView({behavior:'instant',block:'start'});},30);
+      window.scrollTo({top:0,behavior:'instant'});
     }else{
       updateMirrors();
       window.scrollTo({top:110,behavior:'instant'});
@@ -421,6 +462,17 @@
   document.getElementById('mobileCloseDraw').addEventListener('click',closeDraw);
   document.getElementById('mobileDrawDone').addEventListener('click',closeDraw);
   window.addEventListener('resize',()=>{if(document.body.classList.contains('mobile-preview-on')&&!hasUserAdjustedZoom){setFitPageZoom();}if(modal.classList.contains('is-open')){setupMiniCanvas();redrawEditor();}});
-  if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  if('serviceWorker'in navigator&&location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').then((reg) => {
+        reg.update();
+      }).catch(()=>{});
+    });
+  }
   renderPage(1);
+  try {
+    if (localStorage.getItem('survei_mobile_mode') === 'a4') {
+      setPreview(true);
+    }
+  } catch (e) {}
 })();
