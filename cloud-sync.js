@@ -96,9 +96,23 @@ function jsonResponse(data) {
   let currentType = 'survei'; // 'air' | 'udara' | 'portal'
   let isFlushingQueue = false;
 
+  // Default URL jika ingin otomatis aktif di semua perangkat tanpa perlu memasukkan link lagi
+  const DEFAULT_APP_SCRIPT_URL = '';
+
+  // Auto-detect ?drive_url=... atau ?sync_url=... dari tautan berbagi
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const paramUrl = params.get('drive_url') || params.get('sync_url');
+    if (paramUrl) {
+      localStorage.setItem(STORAGE_KEYS.URL, decodeURIComponent(paramUrl).trim());
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  } catch (e) {}
+
   // --- Helper Storage ---
   function getUrl() {
-    return (localStorage.getItem(STORAGE_KEYS.URL) || '').trim();
+    return (localStorage.getItem(STORAGE_KEYS.URL) || DEFAULT_APP_SCRIPT_URL || '').trim();
   }
 
   function setUrl(url) {
@@ -426,6 +440,9 @@ function jsonResponse(data) {
               <button type="button" class="cloud-btn cloud-btn-primary" id="cloudSaveTestBtn">
                 🔗 Simpan & Tes Koneksi
               </button>
+              <button type="button" class="cloud-btn cloud-btn-outline" id="cloudShareLinkBtn" title="Salin tautan yang sudah otomatis tersambung untuk dibuka di Laptop">
+                📲 Salin Tautan untuk Laptop
+              </button>
               <button type="button" class="cloud-btn cloud-btn-outline" id="cloudClearUrlBtn">
                 Hapus URL
               </button>
@@ -535,6 +552,21 @@ function jsonResponse(data) {
         updateBadges();
         showToast('URL Google Drive dihapus.', 'warning');
       }
+    });
+
+    // Salin Tautan Cepat untuk Laptop
+    overlay.querySelector('#cloudShareLinkBtn')?.addEventListener('click', () => {
+      const url = getUrl();
+      if (!url) {
+        alert('Masukkan dan simpan URL Web App terlebih dahulu.');
+        return;
+      }
+      const shareUrl = window.location.origin + window.location.pathname + '?drive_url=' + encodeURIComponent(url);
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        showToast('🔗 Tautan khusus tersalin! Buka link ini di Laptop/HP lain untuk langsung tersambung otomatis.', 'success', 5000);
+      }).catch(() => {
+        prompt('Salin link ini untuk dibuka di laptop:', shareUrl);
+      });
     });
 
     // Push Current
