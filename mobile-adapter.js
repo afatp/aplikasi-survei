@@ -56,6 +56,7 @@
     <div class="mobile-paper-zoom-bar" id="mobilePaperZoomBar" role="toolbar" aria-label="Pengatur Ukuran Zoom Form A4">
       <div class="zoom-bar-row1">
         <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
+        <button type="button" class="zoom-btn-save" id="mobileZoomSave" title="Simpan data survei">💾 Simpan</button>
         <button type="button" class="zoom-btn-pen is-off" id="mobileTogglePen" title="Aktifkan / Nonaktifkan Pen (Mencegah layar tercoret saat digeser)">🖐️ Pen: OFF</button>
         <div class="zoom-page-tabs" id="mobileZoomPageTabs"></div>
       </div>
@@ -218,10 +219,11 @@
       b.title=labels[i];
       b.addEventListener('click',()=>{
         renderPage(i+1);
+        [...zoomPageTabs.children].forEach(btn => btn.classList.toggle('active', btn === b));
         const sheet=sheets[i];
         if(sheet){
-          const sheetTop=sheet.offsetTop;
-          window.scrollTo({top:Math.max(0,sheetTop-200),behavior:'smooth'});
+          const frame = sheet.closest('.sheet-frame') || sheet;
+          frame.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       });
       zoomPageTabs.append(b);
@@ -253,10 +255,15 @@
     }
   });
 
+  document.getElementById('mobileZoomSave')?.addEventListener('click', () => {
+    window.saveData?.();
+    showToast('💾 Data project berhasil disimpan');
+  });
+
   function getFitPageZoom() {
     const availW = Math.max(200, window.innerWidth - 12);
-    // Fixed headers: toolbar (66) + strip (50) + zoom bar (76) + bottom actions (70)
-    const topReserved = 265;
+    // Fixed headers: top zoom bar (74) + bottom actions (64) + spacing (22)
+    const topReserved = 160;
     const availH = Math.max(200, window.innerHeight - topReserved);
     const fitW = availW / 794;
     const fitH = availH / 1123;
@@ -403,7 +410,7 @@
       window.scrollTo({top:0,behavior:'instant'});
     }else{
       updateMirrors();
-      window.scrollTo({top:110,behavior:'instant'});
+      window.scrollTo({top:0,behavior:'instant'});
     }
   }
   document.getElementById('mobileEasyBtn').addEventListener('click',()=>setPreview(false));

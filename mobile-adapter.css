@@ -75,8 +75,8 @@
   .mobile-bottom-actions button.primary{background:#2368cb;border-color:#2368cb;color:white;flex:1.45}
   /* Keep real source sheets measurable while mobile editor is visible (canvas initialization needs measurable dimensions). */
   body:not(.mobile-preview-on) .wrapper{position:absolute!important;left:-9999px!important;top:0!important;width:794px!important;max-width:none!important;overflow:visible!important;visibility:hidden;pointer-events:none}
-  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:80px 8px 90px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;display:flex!important;flex-direction:column!important;align-items:center!important}
-  body.mobile-preview-on .sheet-frame{display:block!important;position:relative!important;width:calc(794px * var(--sheet-zoom, 1))!important;height:calc(1123px * var(--sheet-zoom, 1))!important;margin:0 auto 16px!important;overflow:visible!important;flex-shrink:0!important;transition:width 0.16s ease-out, height 0.16s ease-out}
+  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:82px 8px 84px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;display:flex!important;flex-direction:column!important;align-items:center!important}
+  body.mobile-preview-on .sheet-frame{display:block!important;position:relative!important;width:calc(794px * var(--sheet-zoom, 1))!important;height:calc(1123px * var(--sheet-zoom, 1))!important;margin:0 auto 16px!important;overflow:visible!important;flex-shrink:0!important;scroll-margin-top:86px!important;transition:width 0.16s ease-out, height 0.16s ease-out}
   body.mobile-preview-on.is-pinching .sheet-frame,body.mobile-preview-on.is-pinching .sheet{transition:none!important}
   body.mobile-preview-on .sheet{position:absolute!important;top:0!important;left:0!important;margin:0!important;max-width:none!important;width:794px!important;min-width:794px!important;height:1123px!important;min-height:1123px!important;transform:scale(var(--sheet-zoom, 1))!important;transform-origin:top left!important;transition:transform 0.16s ease-out;box-shadow:0 4px 18px rgba(18,48,92,0.16)!important}
   body.mobile-preview-on .mobile-app .mobile-form-content{display:none}
@@ -84,10 +84,9 @@
   body.mobile-preview-on .mobile-mode-switch,
   body.mobile-preview-on .mobile-page-nav{display:none!important}
   body.mobile-preview-on .mobile-app{height:0!important;min-height:0!important;padding:0!important;margin:0!important;overflow:visible!important}
-  body.mobile-preview-on{touch-action:pan-y}
   body.mobile-preview-on .toolbar,
-  body.mobile-preview-on .projects-strip,
-  body.mobile-preview-on .mobile-app,
+  body.mobile-preview-on .projects-strip{display:none!important}
+  body.mobile-preview-on{touch-action:pan-y}
   body.mobile-preview-on .mobile-bottom-actions{touch-action:manipulation;transform:none!important}
   .mobile-paper-tip{display:none;color:#35537d;font-size:12px;line-height:1.5;padding:10px 13px;margin-bottom:12px;border:1px solid #c9ddf4;background:#eff6ff;border-radius:11px}
   body.mobile-preview-on .mobile-paper-tip{display:none}
@@ -98,21 +97,24 @@
   .mobile-paper-zoom-bar{display:none!important}
   body.mobile-preview-on .mobile-paper-zoom-bar{
     position:fixed!important;
-    top:116px!important;
+    top:0!important;
     left:0!important;
     right:0!important;
-    z-index:900!important;
+    z-index:1000!important;
     display:flex!important;
     flex-direction:column;
-    gap:5px;
+    gap:4px;
     background:#14325c;
     border-bottom:2px solid #295ca3;
-    box-shadow:0 4px 18px rgba(10,26,48,0.4);
+    box-shadow:0 4px 18px rgba(10,26,48,0.45);
     padding:6px 10px;
     margin:0;
   }
-  .zoom-bar-row1{display:flex;align-items:center;justify-content:space-between;gap:6px}
-  .zoom-btn-back{background:#235fae;color:#fff;border:1px solid #4a88db;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:750;cursor:pointer;white-space:nowrap}
+  .zoom-bar-row1{display:flex;align-items:center;justify-content:space-between;gap:5px}
+  .zoom-btn-back{background:#235fae;color:#fff;border:1px solid #4a88db;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:750;cursor:pointer;white-space:nowrap}
+  .zoom-btn-back:active{background:#1d4e8f}
+  .zoom-btn-save{background:#1e4f91;color:#fff;border:1px solid #437ec8;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:750;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;touch-action:manipulation}
+  .zoom-btn-save:active{background:#173d72}
   .zoom-btn-back:active{background:#1d4e8f}
   .zoom-btn-pen{background:#334155;color:#f1f5f9;border:1px solid #64748b;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;touch-action:manipulation;transition:all 0.15s ease}
   .zoom-btn-pen.is-active{background:#16a34a;color:#fff;border-color:#4ade80;box-shadow:0 0 8px rgba(34,197,94,0.4)}
