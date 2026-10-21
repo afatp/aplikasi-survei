@@ -1,7 +1,8 @@
 /* Mobile editing workspace. Original printable sheets are unchanged. */
 .brand-symbol {background:white!important;border:1px solid #e8edf6;overflow:hidden}
 .brand-uploaded-logo {width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}
-.mobile-app,.mobile-draw-overlay{display:none}
+.mobile-app,.mobile-draw-overlay,.mobile-paper-zoom-bar{display:none}
+.sheet-frame{display:contents}
 @media screen and (max-width:1100px) {
   :root{--toolbar-h:66px;--app-top:155px}
   html{-webkit-text-size-adjust:100%;overflow-x:clip}
@@ -74,11 +75,20 @@
   .mobile-bottom-actions button.primary{background:#2368cb;border-color:#2368cb;color:white;flex:1.45}
   /* Keep real source sheets measurable while mobile editor is visible (canvas initialization needs measurable dimensions). */
   body:not(.mobile-preview-on) .wrapper{position:absolute!important;left:-9999px!important;top:0!important;width:794px!important;max-width:none!important;overflow:visible!important;visibility:hidden;pointer-events:none}
-  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:0 8px 50px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
-  body.mobile-preview-on .sheet{margin:0 0 15px!important;max-width:none!important;width:210mm!important;min-width:210mm!important}
+  body.mobile-preview-on .wrapper{position:relative!important;left:auto!important;top:auto!important;width:100%!important;max-width:none!important;overflow-x:auto!important;padding:0 8px 125px!important;visibility:visible!important;pointer-events:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;display:block!important}
+  body.mobile-preview-on .sheet-frame{display:block!important;position:relative!important;width:calc(794px * var(--sheet-zoom, 1))!important;height:calc(1123px * var(--sheet-zoom, 1))!important;margin:0 auto 16px!important;overflow:visible!important;flex-shrink:0!important;transition:width 0.16s ease-out, height 0.16s ease-out}
+  body.mobile-preview-on.is-pinching .sheet-frame,body.mobile-preview-on.is-pinching .sheet{transition:none!important}
+  body.mobile-preview-on .sheet{position:absolute!important;top:0!important;left:0!important;margin:0!important;max-width:none!important;width:794px!important;min-width:794px!important;height:1123px!important;min-height:1123px!important;transform:scale(var(--sheet-zoom, 1))!important;transform-origin:top left!important;transition:transform 0.16s ease-out;box-shadow:0 4px 18px rgba(18,48,92,0.16)!important}
   body.mobile-preview-on .mobile-app .mobile-form-content{display:none}
-  .mobile-paper-tip{display:none;color:#526e96;font-size:12px;line-height:1.5;padding:11px 13px;margin-bottom:10px;border:1px solid #cbdff6;background:#eff6ff;border-radius:10px}
+  .mobile-paper-tip{display:none;color:#35537d;font-size:12px;line-height:1.5;padding:10px 13px;margin-bottom:12px;border:1px solid #c9ddf4;background:#eff6ff;border-radius:11px}
   body.mobile-preview-on .mobile-paper-tip{display:block}
+  /* Floating Zoom Bar */
+  body.mobile-preview-on .mobile-paper-zoom-bar{position:fixed;bottom:calc(58px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);z-index:85;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid #c7d7eb;box-shadow:0 6px 22px rgba(18,48,92,0.22);border-radius:999px;padding:5px 8px;max-width:calc(100vw - 16px);white-space:nowrap;touch-action:manipulation}
+  .mobile-paper-zoom-bar button{min-height:36px;padding:6px 11px;border:1px solid #d4e0f0;border-radius:999px;background:#f7faff;color:#244b7a;font-size:12px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+  .mobile-paper-zoom-bar button:active{background:#e2edfd;transform:scale(0.96)}
+  .mobile-paper-zoom-bar button.zoom-btn-fit{background:#2367cc;color:#fff;border-color:#2367cc;font-weight:800}
+  .mobile-paper-zoom-bar button.zoom-btn-fit.active{background:#1b53a6;box-shadow:inset 0 1px 3px rgba(0,0,0,0.25)}
+  .mobile-paper-zoom-bar .zoom-badge-btn{font-size:12px;font-weight:800;color:#1e3b63;min-width:46px;text-align:center;padding:6px 6px;background:#fff;border-color:#cbdbee}
   .mobile-sketch-call{display:flex;flex-direction:column;align-items:stretch;gap:9px}
   .mobile-sketch-call button{padding:13px;border:0;border-radius:12px;color:#fff;background:#246bd0;font-size:14px;font-weight:800;min-height:48px}
   .mobile-sketch-call button.alt{background:#eaf2ff;color:#2c64ae}
@@ -112,10 +122,15 @@
   .toolbar{padding-left:7px!important;padding-right:7px!important}
   .brand-symbol{display:none!important}
   .mobile-hourly-details .mobile-fields{padding:10px}
+  body.mobile-preview-on .mobile-paper-zoom-bar{gap:3px;padding:4px 6px}
+  .mobile-paper-zoom-bar button{padding:5px 8px;font-size:11px;min-height:32px}
+  .mobile-paper-zoom-bar .zoom-badge-btn{min-width:38px;font-size:11px}
 }
 @media (prefers-reduced-motion:reduce){.mobile-progress-track span{transition:none}}
 @media print {
-  .mobile-app,.mobile-draw-overlay,.mobile-bottom-actions{display:none!important}
+  .mobile-app,.mobile-draw-overlay,.mobile-bottom-actions,.mobile-paper-zoom-bar{display:none!important}
   body:not(.mobile-preview-on) .wrapper,body.mobile-preview-on .wrapper{position:static!important;visibility:visible!important;width:auto!important;max-width:none!important;overflow:visible!important;margin:0!important;padding:0!important;left:auto!important;top:auto!important;pointer-events:auto!important}
+  .sheet-frame{display:contents!important}
+  .sheet{position:relative!important;transform:none!important;width:210mm!important;height:297mm!important}
   .brand-uploaded-logo{display:none}
 }

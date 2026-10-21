@@ -5,6 +5,15 @@
   const labels = isAir ? ['Data Umum & Parameter', 'Insitu & Sketsa'] : ['Data Umum', 'TSP / Debu', 'PM10', 'PM2,5', 'Sketsa & Pengesahan'];
   const sheets = [...document.querySelectorAll('.sheet[data-page]')];
   if (!sheets.length) return;
+  sheets.forEach(sheet => {
+    let frame = sheet.parentElement;
+    if (!frame || !frame.classList.contains('sheet-frame')) {
+      frame = document.createElement('div');
+      frame.className = 'sheet-frame';
+      sheet.parentNode.insertBefore(frame, sheet);
+      frame.appendChild(sheet);
+    }
+  });
   const originals = [...document.querySelectorAll('.sheet input, .sheet textarea, .sheet select')];
   const refs = new Map(originals.map((el, i) => [el, i]));
   const mirrors = new Map();
@@ -26,7 +35,7 @@
     </div>
     <div class="mobile-mode-switch"><button id="mobileEasyBtn" type="button" aria-pressed="true">✎ Isi lewat HP</button><button id="mobileA4Btn" type="button" aria-pressed="false">▤ Lihat Form A4</button></div>
     <nav id="mobilePageNav" class="mobile-page-nav" aria-label="Navigasi halaman form"></nav>
-    <div class="mobile-paper-tip">Geser lembar ke kanan/kiri untuk melihat seluruh tabel asli. Untuk mengisi dengan ukuran tombol lebih besar, pilih <b>Isi lewat HP</b>.</div>
+    <div class="mobile-paper-tip">🔍 <b>Mode Form A4</b>: Form kertas bisa diatur ukurannya dengan tombol zoom di bawah atau cubit layar (pinch) untuk memperbesar / memperkecil.</div>
     <div class="mobile-form-content"><div class="mobile-action-bar"><button type="button" id="mobileSave" class="is-primary">Simpan data</button><button type="button" id="mobilePrint">Cetak PDF</button>${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}</div><div id="mobileFields"></div><p class="mobile-footer-help">Isian langsung terhubung ke formulir resmi dan tersimpan otomatis pada perangkat ini. Gunakan Ekspor JSON untuk cadangan.</p></div>
     <div class="mobile-bottom-actions"><button id="mobileHome">⌂ Beranda</button><button id="mobileNext" class="primary">Lanjut →</button></div>
   `;
@@ -150,9 +159,135 @@
     document.getElementById('mobileNext').textContent=currentPage===labels.length?'Cetak / PDF': 'Lanjut →';
   }
   for(let i=0;i<labels.length;i++){const b=makeNode('button','',(i+1)+'. '+labels[i]);b.type='button';b.addEventListener('click',()=>{renderPage(i+1);if(document.body.classList.contains('mobile-preview-on'))sheets[i].scrollIntoView({behavior:'instant',block:'start'});else window.scrollTo({top:110,behavior:'instant'});});nav.append(b);}
+  /* Paper Form Zoom & Scale Engine for Mobile */
+  const zoomBar = document.createElement('div');
+  zoomBar.id = 'mobilePaperZoomBar';
+  zoomBar.className = 'mobile-paper-zoom-bar';
+  zoomBar.setAttribute('role', 'toolbar');
+  zoomBar.setAttribute('aria-label', 'Pengatur Ukuran Zoom Form A4');
+  zoomBar.innerHTML = `
+    <button type="button" class="zoom-btn-fit" id="mobileZoomFit" title="Pas Lebar Layar HP">🔍 Pas Layar</button>
+    <button type="button" id="mobileZoomOut" aria-label="Perkecil Zoom" title="Perkecil">➖</button>
+    <button type="button" class="zoom-badge-btn" id="mobileZoomBadge" title="Ketuk untuk beralih Pas Layar / 100%">100%</button>
+    <button type="button" id="mobileZoomIn" aria-label="Perbesar Zoom" title="Perbesar">➕</button>
+    <button type="button" id="mobileZoomReset" title="Ukuran Asli 100%">100%</button>
+  `;
+  document.body.appendChild(zoomBar);
+
+  let currentZoom = 1.0;
+  let isFitMode = false;
+  let hasUserAdjustedZoom = false;
+  const wrapper = document.querySelector('.wrapper');
+
+  function getFitZoom() {
+    const availW = Math.max(280, window.innerWidth - 20);
+    return Math.min(1.0, Math.max(0.35, Math.round((availW / 794) * 100) / 100));
+  }
+
+  function applyZoom(zoom, fitMode = false) {
+    currentZoom = Math.min(1.8, Math.max(0.35, Math.round(zoom * 100) / 100));
+    isFitMode = !!fitMode;
+    if (wrapper) {
+      wrapper.style.setProperty('--sheet-zoom', currentZoom);
+    }
+    const badge = document.getElementById('mobileZoomBadge');
+    if (badge) {
+      badge.textContent = Math.round(currentZoom * 100) + '%';
+    }
+    const fitBtn = document.getElementById('mobileZoomFit');
+    if (fitBtn) {
+      fitBtn.classList.toggle('active', isFitMode);
+    }
+  }
+
+  function setFitZoom() {
+    applyZoom(getFitZoom(), true);
+  }
+
+  function zoomStep(delta) {
+    hasUserAdjustedZoom = true;
+    applyZoom(currentZoom + delta, false);
+  }
+
+  document.getElementById('mobileZoomFit')?.addEventListener('click', () => {
+    hasUserAdjustedZoom = false;
+    setFitZoom();
+    showToast('Ukuran form disesuaikan ke layar (' + Math.round(currentZoom * 100) + '%)');
+  });
+
+  document.getElementById('mobileZoomOut')?.addEventListener('click', () => {
+    zoomStep(-0.1);
+  });
+
+  document.getElementById('mobileZoomIn')?.addEventListener('click', () => {
+    zoomStep(0.1);
+  });
+
+  document.getElementById('mobileZoomReset')?.addEventListener('click', () => {
+    hasUserAdjustedZoom = true;
+    applyZoom(1.0, false);
+    showToast('Ukuran form direset ke 100% (asli)');
+  });
+
+  document.getElementById('mobileZoomBadge')?.addEventListener('click', () => {
+    if (Math.abs(currentZoom - 1.0) < 0.05) {
+      hasUserAdjustedZoom = false;
+      setFitZoom();
+    } else {
+      hasUserAdjustedZoom = true;
+      applyZoom(1.0, false);
+    }
+  });
+
+  if (wrapper) {
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1.0;
+
+    wrapper.addEventListener('touchstart', (e) => {
+      if (document.body.classList.contains('mobile-preview-on') && e.touches.length === 2) {
+        pinchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        pinchStartZoom = currentZoom;
+        document.body.classList.add('is-pinching');
+      }
+    }, { passive: true });
+
+    wrapper.addEventListener('touchmove', (e) => {
+      if (document.body.classList.contains('mobile-preview-on') && e.touches.length === 2 && pinchStartDist > 0) {
+        e.preventDefault();
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        hasUserAdjustedZoom = true;
+        applyZoom(pinchStartZoom * (currentDist / pinchStartDist), false);
+      }
+    }, { passive: false });
+
+    function endPinch(e) {
+      if (e.touches.length < 2) {
+        pinchStartDist = 0;
+        document.body.classList.remove('is-pinching');
+      }
+    }
+    wrapper.addEventListener('touchend', endPinch, { passive: true });
+    wrapper.addEventListener('touchcancel', endPinch, { passive: true });
+  }
+
   function setPreview(on){document.body.classList.toggle('mobile-preview-on',on);document.getElementById('mobileEasyBtn').setAttribute('aria-pressed',String(!on));document.getElementById('mobileA4Btn').setAttribute('aria-pressed',String(on));
     document.getElementById('mobileNext').textContent=currentPage===labels.length?'Cetak / PDF':'Lanjut →';
-    if(on){updateMirrors();setTimeout(()=>{sheets[currentPage-1]?.scrollIntoView({behavior:'instant',block:'start'});},30);}else{updateMirrors();window.scrollTo({top:110,behavior:'instant'});}
+    if(on){
+      updateMirrors();
+      if(window.innerWidth<=1100 && !hasUserAdjustedZoom){
+        setFitZoom();
+      }
+      setTimeout(()=>{sheets[currentPage-1]?.scrollIntoView({behavior:'instant',block:'start'});},30);
+    }else{
+      updateMirrors();
+      window.scrollTo({top:110,behavior:'instant'});
+    }
   }
   document.getElementById('mobileEasyBtn').addEventListener('click',()=>setPreview(false));
   document.getElementById('mobileA4Btn').addEventListener('click',()=>setPreview(true));
@@ -237,7 +372,7 @@
   function closeDraw(){finishDraw();modal.classList.remove('is-open');document.body.style.overflow='';window.saveData?.();updateMirrors();}
   document.getElementById('mobileCloseDraw').addEventListener('click',closeDraw);
   document.getElementById('mobileDrawDone').addEventListener('click',closeDraw);
-  window.addEventListener('resize',()=>{if(modal.classList.contains('is-open')){setupMiniCanvas();redrawEditor();}});
+  window.addEventListener('resize',()=>{if(document.body.classList.contains('mobile-preview-on')&&(isFitMode||!hasUserAdjustedZoom)){setFitZoom();}if(modal.classList.contains('is-open')){setupMiniCanvas();redrawEditor();}});
   if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
   renderPage(1);
 })();
