@@ -1,0 +1,36 @@
+SISTEM SURVEI TERPADU - VERSI MOBILE RESPONSIVE
+Survei Udara Ambien (FSOP-10.3.3) dan Sampel Air (FSOP-10.3.1)
+
+ISI APLIKASI
+- index.html      : Beranda untuk memilih Form Udara atau Air
+- udara.html      : Form Udara Ambien (5 halaman A4)
+- air.html        : Form Pengambilan Sampel Air (2 halaman A4)
+- mobile-adapter.js dan mobile-adapter.css : Mode input HP
+- mobile-home.css, logo.png, ikon, dan file pendukung
+- sw.js, manifest.webmanifest : dukungan pemasangan di layar utama/offline setelah situs diakses dengan HTTPS
+
+CARA MENGGUNAKAN
+1. Ekstrak seluruh file ZIP. Semua file harus berada pada folder yang sama.
+2. Pada laptop: buka index.html di Chrome atau Edge.
+3. Pada HP: untuk akses paling stabil, unggah seluruh isi folder ke hosting statis HTTPS (misalnya Netlify, Cloudflare Pages, GitHub Pages). Buka alamat situs dari Chrome Android/Safari iPhone.
+4. Dari Beranda pilih Survei Udara atau Air.
+5. Pada layar HP, pilih 'Isi lewat HP' untuk tampilan responsif; tekan pilihan halaman dan isi field besar. Seluruh field terhubung langsung dengan form A4 asli.
+6. Pilih 'Lihat Form A4' untuk memeriksa susunan persis sebelum cetak. Geser mendatar untuk melihat seluruh lebar lembar.
+7. Pada halaman sketsa, tekan Buka Editor Sketsa atau Tanda Tangan untuk menggambar dengan sentuhan. Objek bisa ditambahkan dari editor. Untuk memutar, memindahkan atau mengubah teks objek secara detail, gunakan 'Atur Objek pada Denah A4'.
+8. Gunakan tombol Simpan Data, dan Cetak PDF untuk laporan A4 (Udara 5 halaman, Air 2 halaman).
+9. Gunakan Ekspor JSON pada menu titik tiga (...) untuk backup. Gunakan Impor JSON untuk memulihkan atau memindahkan data.
+
+PENTING UNTUK PENGGUNA HP
+- File HTML yang dibuka langsung dari aplikasi 'Files' di beberapa iPhone/Android mungkin dibatasi browser dan tidak mendukung penyimpanan. Pakai situs HTTPS adalah cara paling konsisten.
+- Website tidak langsung tersedia di internet hanya dengan ZIP. Pemilik situs perlu menerbitkannya di hosting statis.
+- Data formulir tersimpan di browser/perangkat masing-masing, tidak otomatis tersinkron antar HP/laptop. Jangan bersihkan data situs/browser sebelum ekspor JSON.
+- Untuk mengakses offline: setelah situs HTTPS terpasang dan pernah dibuka secara online, pada Android gunakan menu 'Tambahkan ke layar utama' atau 'Instal aplikasi'; pada iPhone gunakan Safari > Bagikan > Tambahkan ke Layar Utama. Ketersediaan offline bergantung browser serta keberhasilan cache seluruh aset.
+- Pastikan ukuran kertas A4, skala 100%, margin tidak ada saat mencetak.
+- Jangan menghapus berkas pendukung CSS/JS/logo karena beranda dan mode HP membutuhkannya.
+
+KOMPATIBILITAS
+Tampilan diuji melalui browser simulasi pada lebar 320, 375, 390, 430, 768, 1024 dan 1280 px.
+Isi form asli tidak dihapus: Udara 670 kontrol, Air 148 kontrol.
+Cetak teruji 5 halaman A4 Udara dan 2 halaman A4 Air.
+
+Tanggal pembaruan: 21 Oktober 2026.

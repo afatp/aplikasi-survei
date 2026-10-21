@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistem Survei Lapangan | Pengambilan Sampel Air dan Udara</title>
+  <style>
+    :root {
+      --navy: #122544;
+      --blue: #315fc5;
+      --text: #1a2d49;
+      --muted: #718198;
+      --bg: #f6f8fc;
+      --line: #e1e8f4
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    header {
+      height: 74px;
+      border-bottom: 1px solid var(--line);
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 max(calc((100% - 1120px)/2), 32px);
+      gap: 15px
+    }
+
+    header .mark {
+      background: #e7eefc;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      width: 44px;
+      height: 44px;
+      color: var(--blue)
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 13px
+    }
+
+    .logo b {
+      display: block;
+      font-size: 15px
+    }
+
+    .logo small {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: .65px
+    }
+
+    .pill {
+      font-size: 11px;
+      color: #417c67;
+      background: #e7f7ef;
+      border-radius: 25px;
+      padding: 8px 13px;
+      font-weight: 750
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: auto;
+      padding: 62px 28px 80px
+    }
+
+    .eyebrow {
+      color: #416bc4;
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 2px;
+      margin: 0 0 15px
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 36px
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 4vw, 48px);
+      letter-spacing: -1.8px;
+      line-height: 1.15;
+      color: #172c51
+    }
+
+    h1 span {
+      color: #386aca
+    }
+
+    .desc {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.75;
+      margin: 17px 0 0;
+      max-width: 620px
+    }
+
+    .badge {
+      border: 1px solid #dae6f8;
+      padding: 11px 16px;
+      border-radius: 13px;
+      background: #fff;
+      color: #42679f;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 0 15px
+    }
+
+    .section-title h2 {
+      font-size: 16px;
+      margin: 0
+    }
+
+    .section-title span {
+      color: #8e9eb0;
+      font-size: 12px
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px
+    }
+
+    .card {
+      position: relative;
+      text-decoration: none;
+      color: inherit;
+      padding: 29px;
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid #e3e9f3;
+      box-shadow: 0 14px 28px rgba(22, 45, 85, .035);
+      display: flex;
+      flex-direction: column;
+      min-height: 326px;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+      overflow: hidden
+    }
+
+    .card:hover,
+    .card:focus-visible {
+      transform: translateY(-4px);
+      border-color: #acc6f5;
+      box-shadow: 0 19px 30px rgba(40, 78, 137, .1);
+      outline: none
+    }
+
+    .card:before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: #3879dd
+    }
+
+    .card.water:before {
+      background: #12a0aa
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start
+    }
+
+    .icon {
+      display: grid;
+      place-items: center;
+      border-radius: 17px;
+      height: 62px;
+      width: 62px;
+      background: #eaf2fe;
+      color: #3269c4;
+      font-size: 32px
+    }
+
+    .water .icon {
+      background: #e5f8f8;
+      color: #179ca4
+    }
+
+    .type {
+      background: #f4f7fc;
+      color: #7d8da6;
+      font-size: 11px;
+      padding: 7px 11px;
+      border-radius: 20px;
+      font-weight: 850
+    }
+
+    .card h3 {
+      font-size: 24px;
+      letter-spacing: -.6px;
+      margin: 28px 0 8px
+    }
+
+    .card p {
+      color: #7b8ca2;
+      line-height: 1.65;
+      font-size: 13px;
+      margin: 0
+    }
+
+    .details {
+      font-size: 11px;
+      color: #526d97;
+      margin-top: auto;
+      padding-top: 19px;
+      display: flex;
+      gap: 9px;
+      align-items: center
+    }
+
+    .details span {
+      background: #f2f6fd;
+      padding: 7px 10px;
+      border-radius: 8px
+    }
+
+    .enter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 24px;
+      border-top: 1px solid #ecf0f5;
+      padding-top: 22px;
+      font-size: 13px;
+      color: #2b65c7;
+      font-weight: 750
+    }
+
+    .water .enter {
+      color: #108892
+    }
+
+    .arrow {
+      display: grid;
+      place-items: center;
+      background: #edf3ff;
+      color: #2b65c7;
+      width: 33px;
+      height: 33px;
+      border-radius: 10px;
+      font-size: 19px
+    }
+
+    .water .arrow {
+      color: #118b91;
+      background: #e1f7f8
+    }
+
+    .footer {
+      margin-top: 35px;
+      background: #edf3fc;
+      border-radius: 14px;
+      padding: 15px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-size: 12px;
+      color: #627795;
+      line-height: 1.5
+    }
+
+    .footer b {
+      color: #355d94
+    }
+
+    @media(max-width:750px) {
+      header {
+        padding: 0 21px
+      }
+
+      .container {
+        padding: 35px 20px 65px
+      }
+
+      .cards {
+        grid-template-columns: 1fr
+      }
+
+      .hero {
+        grid-template-columns: 1fr
+      }
+
+      .badge {
+        justify-self: start
+      }
+
+      h1 {
+        font-size: 34px
+      }
+
+      .card {
+        min-height: 285px;
+        padding: 24px
+      }
+
+      .section-title h2 {
+        font-size: 15px
+      }
+    }
+
+    @media print {
+      .cards {
+        display: none
+      }
+    }
+  </style>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="mobile-home.css">
+</head>
+
+<body>
+  <header>
+    <div class="logo"><span class="mark"><img src="logo.png" alt="Logo Laboratorium"
+          style="width:100%;height:100%;object-fit:contain"></span>
+      <div><b>PT LABORATORINDO ALAM BESTARI</b><small>REKAMAN DATA PENGAMBILAN SAMPEL</small></div>
+    </div><span class="pill">● Mode Offline</span>
+  </header>
+  <main class="container">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">PRIVATE SYSTEM FIRDAUS IKRAM</p>
+        <h1>Mulai survei<br><span>pilih jenis sampel.</span></h1>
+        <p class="desc">Satu sistem untuk mengisi formulir resmi pengambilan sampel udara ambien dan air. Data setiap
+          jenis survei disimpan secara terpisah di browser, siap dicetak sesuai format sumber.</p>
+      </div>
+      <div class="badge">2 formulir tersedia &nbsp; · &nbsp; Offline</div>
+    </div>
+    <div class="section-title">
+      <h2>Pilih formulir survei</h2><span>FSOP · Revisi/Terbit 1/1</span>
+    </div>
+    <div class="cards"><a class="card air" href="udara.html" aria-label="Buka formulir udara ambien">
+        <div class="card-head"><span class="icon">〰</span><span class="type">FSOP-10.3.3</span></div>
+        <h3>Udara Ambien</h3>
+        <p>Identitas sampling, parameter kimia dan fisika, pengukuran TSP/PM10/PM2,5 selama 24 jam, serta denah titik
+          sampling.</p>
+        <div class="details"><span>5 halaman A4</span><span>Sketsa interaktif</span></div>
+        <div class="enter">Buka Form Udara <span class="arrow">↗</span></div>
+      </a>
+      <a class="card water" href="air.html" aria-label="Buka formulir sampel air">
+        <div class="card-head"><span class="icon">≈</span><span class="type">FSOP-10.3.1</span></div>
+        <h3>Sampel Air</h3>
+        <p>Metode pengambilan contoh, jenis dan kondisi badan air, parameter fisika–kimia–biologi, pengukuran insitu,
+          dan sketsa lokasi.</p>
+        <div class="details"><span>2 halaman A4</span><span>Sketsa interaktif</span></div>
+        <div class="enter">Buka Form Air <span class="arrow">↗</span></div>
+      </a>
+    </div>
+    <div class="footer"><span style="font-size:22px">ⓘ</span>
+      <div><b>Seluruh isian disimpan di perangkat ini.</b> Gunakan fitur Ekspor JSON pada masing-masing formulir untuk
+        membuat cadangan atau memindahkan data antarperangkat.</div>
+    </div>
+  </main>
+  <script>if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => { })); }</script>
+</body>
+
+</html>
