@@ -363,6 +363,32 @@ function jsonResponse(data) {
     return { count: mergedCount, totalInDrive: res.projects.length };
   }
 
+  // --- Update Realtime Online/Offline Web Status Indicators ---
+  function updateRealtimeWebStatus(customState) {
+    const isOnline = navigator.onLine;
+    const pills = document.querySelectorAll('.web-status-pill, .mode-pill, header .pill');
+    pills.forEach(pill => {
+      pill.classList.remove('is-online', 'is-offline');
+      if (isOnline) {
+        pill.classList.add('is-online');
+        pill.innerHTML = '<span class="status-pulse-dot"></span><span>Online</span>';
+        pill.title = 'Terhubung ke internet. Sinkronisasi Google Drive aktif.';
+      } else {
+        pill.classList.add('is-offline');
+        pill.innerHTML = '<span class="status-pulse-dot"></span><span>Offline</span>';
+        pill.title = 'Perangkat offline. Semua data tersimpan aman di HP/laptop.';
+      }
+    });
+
+    const statusEl = document.getElementById('status');
+    if (statusEl && !customState) {
+      const cur = (statusEl.textContent || '').trim();
+      if (!cur || cur === 'Siap' || cur.includes('Online') || cur.includes('Offline')) {
+        statusEl.textContent = isOnline ? 'Online · Siap' : 'Offline · Siap (Lokal)';
+      }
+    }
+  }
+
   // --- Update Status Badges in DOM ---
   function updateBadges(customState) {
     const url = getUrl();
@@ -375,22 +401,25 @@ function jsonResponse(data) {
 
       if (!url) {
         badge.classList.add('status-unconfigured');
-        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span>☁️ Drive: Belum Diatur</span>`;
+        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span class="cloud-badge-label">☁️ Drive: Belum Diatur</span>`;
         badge.title = 'Klik untuk menghubungkan ke Google Drive';
       } else if (customState === 'syncing') {
         badge.classList.add('status-offline');
-        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span>🔄 Mengunggah...</span>`;
+        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span class="cloud-badge-label">🔄 Mengunggah...</span>`;
       } else if (!isOnline || queue.length > 0) {
         badge.classList.add('status-offline');
         const countTxt = queue.length > 0 ? ` (${queue.length} antrean)` : '';
-        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span>🟠 Drive: Offline${countTxt}</span>`;
+        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span class="cloud-badge-label">🟠 Drive: Offline${countTxt}</span>`;
         badge.title = queue.length > 0 ? `${queue.length} perubahan tersimpan di HP, akan dikirim ke Drive saat online.` : 'Offline';
       } else {
         badge.classList.add('status-connected');
-        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span>🟢 Drive: Terhubung</span>`;
+        badge.innerHTML = `<span class="cloud-pulse-dot"></span><span class="cloud-badge-label">🟢 Drive: Terhubung</span>`;
         badge.title = 'Terhubung & tersinkronisasi dengan Google Drive';
       }
     });
+
+    // Update realtime web status pill & status text
+    updateRealtimeWebStatus(customState);
 
     // Update modal elements if open
     const modalStatus = document.getElementById('cloudModalStatusBanner');

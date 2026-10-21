@@ -353,18 +353,18 @@
 
 <body>
   <header>
-    <div class="logo"><span class="mark"><img src="logo.png" alt="Logo Laboratorium"
-          style="width:100%;height:100%;object-fit:contain"></span>
-      <div><b>PT LABORATORINDO ALAM BESTARI</b><small>REKAMAN DATA PENGAMBILAN SAMPEL</small></div>
+    <div class="logo">
+      <span class="mark"><img src="logo.png" alt="Logo Laboratorium" style="width:100%;height:100%;object-fit:contain"></span>
+      <div class="logo-text"><b>PT LABORATORINDO ALAM BESTARI</b><small>REKAMAN DATA PENGAMBILAN SAMPEL</small></div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;">
+    <div class="header-actions">
       <button type="button" class="pwa-install-badge-btn" onclick="PwaInstall.promptInstall()" title="Pasang aplikasi di layar utama HP">
         <span>📲 Pasang App</span>
       </button>
       <button type="button" class="cloud-sync-badge" onclick="CloudSync.openModal()" title="Sinkronisasi Google Drive">
         <span class="cloud-pulse-dot"></span><span>☁️ Drive Sync</span>
       </button>
-      <span class="pill">● Mode Offline</span>
+      <span class="web-status-pill pill"><span class="status-pulse-dot"></span><span>Online</span></span>
     </div>
   </header>
   <main class="container">
