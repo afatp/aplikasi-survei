@@ -1,6 +1,24 @@
 /* Progressive mobile interface for original FSOP forms. No form labels, names or print structure changed. */
 (function () {
   'use strict';
+  const metaVp = document.querySelector('meta[name="viewport"]');
+  if (metaVp) {
+    metaVp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+  }
+  // Prevent browser viewport zoom on system UI
+  document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1 && !e.target.closest('.wrapper')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1 && !e.target.closest('.wrapper')) {
+      e.preventDefault();
+    }
+  }, { passive: false });
   const isAir = !!document.querySelector('.water-sheet') || /air\.html(?:$|[?#])/i.test(location.pathname);
   const labels = isAir ? ['Data Umum & Parameter', 'Insitu & Sketsa'] : ['Data Umum', 'TSP / Debu', 'PM10', 'PM2,5', 'Sketsa & Pengesahan'];
   const sheets = [...document.querySelectorAll('.sheet[data-page]')];
@@ -166,27 +184,39 @@
   zoomBar.setAttribute('role', 'toolbar');
   zoomBar.setAttribute('aria-label', 'Pengatur Ukuran Zoom Form A4');
   zoomBar.innerHTML = `
-    <button type="button" class="zoom-btn-fit" id="mobileZoomFit" title="Pas Lebar Layar HP">🔍 Pas Layar</button>
+    <button type="button" class="zoom-btn-fit" id="mobileZoomFitPage" title="Tampilkan seluruh halaman penuh">🔍 Halaman</button>
+    <button type="button" class="zoom-btn-fit-w" id="mobileZoomFitWidth" title="Sesuaikan selebar layar HP">↔ Lebar</button>
     <button type="button" id="mobileZoomOut" aria-label="Perkecil Zoom" title="Perkecil">➖</button>
-    <button type="button" class="zoom-badge-btn" id="mobileZoomBadge" title="Ketuk untuk beralih Pas Layar / 100%">100%</button>
+    <button type="button" class="zoom-badge-btn" id="mobileZoomBadge" title="Ketuk untuk beralih mode zoom">100%</button>
     <button type="button" id="mobileZoomIn" aria-label="Perbesar Zoom" title="Perbesar">➕</button>
     <button type="button" id="mobileZoomReset" title="Ukuran Asli 100%">100%</button>
   `;
   document.body.appendChild(zoomBar);
 
   let currentZoom = 1.0;
-  let isFitMode = false;
+  let activeFitMode = 'page';
   let hasUserAdjustedZoom = false;
   const wrapper = document.querySelector('.wrapper');
 
-  function getFitZoom() {
-    const availW = Math.max(280, window.innerWidth - 20);
-    return Math.min(1.0, Math.max(0.35, Math.round((availW / 794) * 100) / 100));
+  function getFitPageZoom() {
+    const availW = Math.max(260, window.innerWidth - 16);
+    const topH = 120;
+    const botH = 100;
+    const availH = Math.max(260, window.innerHeight - topH - botH);
+    const fitW = availW / 794;
+    const fitH = availH / 1123;
+    const target = Math.min(fitW, fitH);
+    return Math.min(1.0, Math.max(0.20, Math.round(target * 100) / 100));
   }
 
-  function applyZoom(zoom, fitMode = false) {
-    currentZoom = Math.min(1.8, Math.max(0.35, Math.round(zoom * 100) / 100));
-    isFitMode = !!fitMode;
+  function getFitWidthZoom() {
+    const availW = Math.max(260, window.innerWidth - 16);
+    return Math.min(1.0, Math.max(0.20, Math.round((availW / 794) * 100) / 100));
+  }
+
+  function applyZoom(zoom, mode = 'custom') {
+    currentZoom = Math.min(2.0, Math.max(0.20, Math.round(zoom * 100) / 100));
+    activeFitMode = mode;
     if (wrapper) {
       wrapper.style.setProperty('--sheet-zoom', currentZoom);
     }
@@ -194,48 +224,65 @@
     if (badge) {
       badge.textContent = Math.round(currentZoom * 100) + '%';
     }
-    const fitBtn = document.getElementById('mobileZoomFit');
-    if (fitBtn) {
-      fitBtn.classList.toggle('active', isFitMode);
+    const fitPageBtn = document.getElementById('mobileZoomFitPage');
+    if (fitPageBtn) {
+      fitPageBtn.classList.toggle('active', mode === 'page');
+    }
+    const fitWidthBtn = document.getElementById('mobileZoomFitWidth');
+    if (fitWidthBtn) {
+      fitWidthBtn.classList.toggle('active', mode === 'width');
     }
   }
 
-  function setFitZoom() {
-    applyZoom(getFitZoom(), true);
+  function setFitPageZoom() {
+    applyZoom(getFitPageZoom(), 'page');
+  }
+
+  function setFitWidthZoom() {
+    applyZoom(getFitWidthZoom(), 'width');
   }
 
   function zoomStep(delta) {
     hasUserAdjustedZoom = true;
-    applyZoom(currentZoom + delta, false);
+    applyZoom(currentZoom + delta, 'custom');
   }
 
-  document.getElementById('mobileZoomFit')?.addEventListener('click', () => {
+  document.getElementById('mobileZoomFitPage')?.addEventListener('click', () => {
     hasUserAdjustedZoom = false;
-    setFitZoom();
-    showToast('Ukuran form disesuaikan ke layar (' + Math.round(currentZoom * 100) + '%)');
+    setFitPageZoom();
+    showToast('Seluruh halaman pas di layar (' + Math.round(currentZoom * 100) + '%)');
+  });
+
+  document.getElementById('mobileZoomFitWidth')?.addEventListener('click', () => {
+    hasUserAdjustedZoom = true;
+    setFitWidthZoom();
+    showToast('Ukuran disesuaikan selebar layar (' + Math.round(currentZoom * 100) + '%)');
   });
 
   document.getElementById('mobileZoomOut')?.addEventListener('click', () => {
-    zoomStep(-0.1);
+    zoomStep(-0.08);
   });
 
   document.getElementById('mobileZoomIn')?.addEventListener('click', () => {
-    zoomStep(0.1);
+    zoomStep(0.08);
   });
 
   document.getElementById('mobileZoomReset')?.addEventListener('click', () => {
     hasUserAdjustedZoom = true;
-    applyZoom(1.0, false);
+    applyZoom(1.0, '100');
     showToast('Ukuran form direset ke 100% (asli)');
   });
 
   document.getElementById('mobileZoomBadge')?.addEventListener('click', () => {
-    if (Math.abs(currentZoom - 1.0) < 0.05) {
-      hasUserAdjustedZoom = false;
-      setFitZoom();
-    } else {
+    if (activeFitMode === 'page') {
       hasUserAdjustedZoom = true;
-      applyZoom(1.0, false);
+      setFitWidthZoom();
+    } else if (activeFitMode === 'width') {
+      hasUserAdjustedZoom = true;
+      applyZoom(1.0, '100');
+    } else {
+      hasUserAdjustedZoom = false;
+      setFitPageZoom();
     }
   });
 
@@ -245,6 +292,7 @@
 
     wrapper.addEventListener('touchstart', (e) => {
       if (document.body.classList.contains('mobile-preview-on') && e.touches.length === 2) {
+        e.preventDefault();
         pinchStartDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
@@ -252,7 +300,7 @@
         pinchStartZoom = currentZoom;
         document.body.classList.add('is-pinching');
       }
-    }, { passive: true });
+    }, { passive: false });
 
     wrapper.addEventListener('touchmove', (e) => {
       if (document.body.classList.contains('mobile-preview-on') && e.touches.length === 2 && pinchStartDist > 0) {
@@ -262,7 +310,7 @@
           e.touches[0].clientY - e.touches[1].clientY
         );
         hasUserAdjustedZoom = true;
-        applyZoom(pinchStartZoom * (currentDist / pinchStartDist), false);
+        applyZoom(pinchStartZoom * (currentDist / pinchStartDist), 'custom');
       }
     }, { passive: false });
 
@@ -281,7 +329,7 @@
     if(on){
       updateMirrors();
       if(window.innerWidth<=1100 && !hasUserAdjustedZoom){
-        setFitZoom();
+        setFitPageZoom();
       }
       setTimeout(()=>{sheets[currentPage-1]?.scrollIntoView({behavior:'instant',block:'start'});},30);
     }else{
@@ -372,7 +420,7 @@
   function closeDraw(){finishDraw();modal.classList.remove('is-open');document.body.style.overflow='';window.saveData?.();updateMirrors();}
   document.getElementById('mobileCloseDraw').addEventListener('click',closeDraw);
   document.getElementById('mobileDrawDone').addEventListener('click',closeDraw);
-  window.addEventListener('resize',()=>{if(document.body.classList.contains('mobile-preview-on')&&(isFitMode||!hasUserAdjustedZoom)){setFitZoom();}if(modal.classList.contains('is-open')){setupMiniCanvas();redrawEditor();}});
+  window.addEventListener('resize',()=>{if(document.body.classList.contains('mobile-preview-on')&&!hasUserAdjustedZoom){setFitPageZoom();}if(modal.classList.contains('is-open')){setupMiniCanvas();redrawEditor();}});
   if('serviceWorker'in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
   renderPage(1);
 })();
