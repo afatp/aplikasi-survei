@@ -1979,7 +1979,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="alternate" type="application/manifest+json" href="manifest.json">
   <link rel="icon" type="image/png" href="icon-192.png">
-  <link rel="stylesheet" href="mobile-adapter.css?v=8">
+  <link rel="stylesheet" href="mobile-adapter.css?v=9">
   <link rel="stylesheet" href="cloud-sync.css">
   <link rel="stylesheet" href="pwa-install.css">
 </head>
@@ -2007,6 +2007,7 @@
         </summary>
         <div class="more-dropdown">
           <div class="dropdown-heading">DATA & PENGELOLAAN</div>
+          <button type="button" onclick="window.print();document.getElementById('moreActionsMenu').open=false">🖨️ Cetak / Unduh PDF A4 <span>⎙</span></button>
           <button type="button" onclick="PwaInstall.promptInstall();document.getElementById('moreActionsMenu').open=false">📲 Pasang Aplikasi di HP <span>↓</span></button>
           <button type="button" onclick="CloudSync.openModal();document.getElementById('moreActionsMenu').open=false">☁️ Sinkron Google Drive <span>⤾</span></button>
           <button type="button" onclick="exportJSON();document.getElementById('moreActionsMenu').open=false">Ekspor data JSON <span>↗</span></button>
@@ -3712,7 +3713,7 @@
   </div>
 <script src="cloud-sync.js"></script>
 <script src="pwa-install.js"></script>
-<script src="mobile-adapter.js?v=8" defer></script>
+<script src="mobile-adapter.js?v=9" defer></script>
 </body>
 
 </html>

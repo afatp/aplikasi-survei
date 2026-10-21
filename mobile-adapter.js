@@ -52,7 +52,11 @@
       <div class="mobile-progress"><div class="mobile-progress-track"><span id="mobileProgressBar"></span></div><strong id="mobileProgressText">0% terisi</strong></div>
     </div>
     <div class="mobile-mode-switch"><button id="mobileEasyBtn" type="button" aria-pressed="true">✎ Isi lewat HP</button><button id="mobileA4Btn" type="button" aria-pressed="false">▤ Lihat Form A4</button></div>
-    <nav id="mobilePageNav" class="mobile-page-nav" aria-label="Navigasi halaman form"></nav>
+    <div class="mobile-page-nav-wrapper">
+      <button type="button" class="nav-arrow-btn nav-arrow-left" id="mobilePageNavPrev" aria-label="Geser tab halaman ke kiri" title="Geser ke kiri">‹</button>
+      <nav id="mobilePageNav" class="mobile-page-nav" aria-label="Navigasi halaman form"></nav>
+      <button type="button" class="nav-arrow-btn nav-arrow-right" id="mobilePageNavNext" aria-label="Geser tab halaman ke kanan" title="Geser ke kanan">›</button>
+    </div>
     <div class="mobile-paper-zoom-bar" id="mobilePaperZoomBar" role="toolbar" aria-label="Pengatur Ukuran Zoom Form A4">
       <div class="zoom-bar-row1">
         <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
@@ -205,15 +209,94 @@
     const bar=document.getElementById('mobileProgressBar');if(bar)bar.style.width=pct+'%';const val=document.getElementById('mobileProgressText');if(val)val.textContent=pct+'% terisi';
   }
   function renderPage(page){currentPage=Math.max(1,Math.min(labels.length,page));mirrors.clear();
-    [...nav.children].forEach((btn,i)=>{btn.setAttribute('aria-current', i+1===currentPage?'page':'false');if(i+1===currentPage)btn.scrollIntoView({block:'nearest',inline:'nearest'});});
+    [...nav.children].forEach((btn,i)=>{btn.setAttribute('aria-current', i+1===currentPage?'page':'false');if(i+1===currentPage)btn.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});});
     const zoomTabs = document.getElementById('mobileZoomPageTabs');
     if(zoomTabs){
-      [...zoomTabs.children].forEach((btn,i)=>btn.classList.toggle('active', i+1===currentPage));
+      [...zoomTabs.children].forEach((btn,i)=>{btn.classList.toggle('active', i+1===currentPage);if(i+1===currentPage)btn.scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});});
     }
     if(!isAir && currentPage>=2 && currentPage<=4)renderHours(currentPage);else renderNormal(currentPage);
     document.getElementById('mobileNext').textContent=currentPage===labels.length?'Cetak / PDF': 'Lanjut →';
+    updateNavArrows();
   }
+
+  const navPrev = document.getElementById('mobilePageNavPrev');
+  const navNext = document.getElementById('mobilePageNavNext');
+  function updateNavArrows(){
+    if(!nav || !navPrev || !navNext) return;
+    const canScroll = nav.scrollWidth > nav.clientWidth + 4;
+    if(!canScroll){
+      navPrev.style.display = 'none';
+      navNext.style.display = 'none';
+      return;
+    }
+    navPrev.style.display = 'inline-flex';
+    navNext.style.display = 'inline-flex';
+    const atStart = nav.scrollLeft <= 4;
+    const atEnd = nav.scrollLeft + nav.clientWidth >= nav.scrollWidth - 6;
+    navPrev.classList.toggle('is-disabled', atStart);
+    navNext.classList.toggle('is-disabled', atEnd);
+  }
+
+  if(nav && navPrev && navNext){
+    navPrev.addEventListener('click', () => {
+      nav.scrollBy({ left: -160, behavior: 'smooth' });
+    });
+    navNext.addEventListener('click', () => {
+      nav.scrollBy({ left: 160, behavior: 'smooth' });
+    });
+    nav.addEventListener('scroll', updateNavArrows, { passive: true });
+    window.addEventListener('resize', updateNavArrows);
+  }
+
+  function enableDragScroll(el) {
+    if (!el) return;
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let dragged = false;
+
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      isDown = true;
+      dragged = false;
+      startX = e.clientX;
+      scrollLeft = el.scrollLeft;
+    }, { passive: true });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 4) {
+        dragged = true;
+        el.scrollLeft = scrollLeft - dx;
+      }
+    }, { passive: true });
+
+    const endDrag = () => {
+      if (!isDown) return;
+      isDown = false;
+      if (dragged) {
+        const killClick = (ev) => {
+          ev.stopPropagation();
+          ev.preventDefault();
+        };
+        el.addEventListener('click', killClick, { capture: true, once: true });
+        setTimeout(() => el.removeEventListener('click', killClick, { capture: true }), 100);
+      }
+    };
+
+    window.addEventListener('pointerup', endDrag, { passive: true });
+    window.addEventListener('pointercancel', endDrag, { passive: true });
+  }
+
   for(let i=0;i<labels.length;i++){const b=makeNode('button','',(i+1)+'. '+labels[i]);b.type='button';b.addEventListener('click',()=>{renderPage(i+1);if(document.body.classList.contains('mobile-preview-on'))sheets[i].scrollIntoView({behavior:'instant',block:'start'});else window.scrollTo({top:110,behavior:'instant'});});nav.append(b);}
+  setTimeout(updateNavArrows, 100);
+
+  // Enable drag scroll on all swipeable strips
+  enableDragScroll(nav);
+  enableDragScroll(document.getElementById('projectTabBar'));
+  enableDragScroll(document.querySelector('.toolbar-main-actions'));
+  enableDragScroll(document.getElementById('mobileZoomPageTabs'));
   /* Paper Form Zoom & Scale Engine for Mobile */
   let currentZoom = 1.0;
   let activeFitMode = 'page';
