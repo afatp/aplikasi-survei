@@ -96,8 +96,8 @@ function jsonResponse(data) {
   let currentType = 'survei'; // 'air' | 'udara' | 'portal'
   let isFlushingQueue = false;
 
-  // Default URL jika ingin otomatis aktif di semua perangkat tanpa perlu memasukkan link lagi
-  const DEFAULT_APP_SCRIPT_URL = '';
+  // Default URL resmi: otomatis aktif di semua perangkat tanpa perlu memasukkan link lagi
+  const DEFAULT_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPmkeVZmjzXpjNRJ3olvuLP90b2X6GXgtPNazBM-KiB_IYJvqB0akt8Qdcv5ZKixEX/exec';
 
   // Auto-detect ?drive_url=... atau ?sync_url=... dari tautan berbagi
   try {
