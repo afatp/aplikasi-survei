@@ -2852,10 +2852,17 @@
 }
 @media print {.return-home{display:none!important;}}
 </style>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="stylesheet" href="mobile-adapter.css?v=8">
-<link rel="stylesheet" href="cloud-sync.css">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Survei Lapangan">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="alternate" type="application/manifest+json" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="stylesheet" href="mobile-adapter.css?v=8">
+  <link rel="stylesheet" href="cloud-sync.css">
+  <link rel="stylesheet" href="pwa-install.css">
 </head>
 
 <body>
@@ -2898,6 +2905,7 @@
         </summary>
         <div class="more-dropdown">
           <div class="dropdown-heading">DATA & PENGELOLAAN</div>
+          <button type="button" onclick="PwaInstall.promptInstall();document.getElementById('moreActionsMenu').open=false">📲 Pasang Aplikasi di HP <span>↓</span></button>
           <button type="button" onclick="CloudSync.openModal();document.getElementById('moreActionsMenu').open=false">☁️ Sinkron Google Drive <span>⤾</span></button>
           <button type="button" onclick="exportJSON();document.getElementById('moreActionsMenu').open=false">Ekspor data
             JSON <span>↗</span></button>
@@ -5800,6 +5808,7 @@
     </div>
   </div>
 <script src="cloud-sync.js"></script>
+<script src="pwa-install.js"></script>
 <script src="mobile-adapter.js?v=8" defer></script>
 </body>
 

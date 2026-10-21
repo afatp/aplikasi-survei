@@ -338,10 +338,17 @@
       }
     }
   </style>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Survei Lapangan">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="alternate" type="application/manifest+json" href="manifest.json">
   <link rel="icon" type="image/png" href="icon-192.png">
   <link rel="stylesheet" href="mobile-home.css">
   <link rel="stylesheet" href="cloud-sync.css">
+  <link rel="stylesheet" href="pwa-install.css">
 </head>
 
 <body>
@@ -351,6 +358,9 @@
       <div><b>PT LABORATORINDO ALAM BESTARI</b><small>REKAMAN DATA PENGAMBILAN SAMPEL</small></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
+      <button type="button" class="pwa-install-badge-btn" onclick="PwaInstall.promptInstall()" title="Pasang aplikasi di layar utama HP">
+        <span>📲 Pasang App</span>
+      </button>
       <button type="button" class="cloud-sync-badge" onclick="CloudSync.openModal()" title="Sinkronisasi Google Drive">
         <span class="cloud-pulse-dot"></span><span>☁️ Drive Sync</span>
       </button>
@@ -358,6 +368,15 @@
     </div>
   </header>
   <main class="container">
+    <div class="pwa-install-banner">
+      <div class="install-copy">
+        <div class="install-title">📲 Pasang Aplikasi Survei di Layar HP</div>
+        <div class="install-desc">Bisa dibuka langsung dari beranda HP seperti aplikasi resmi, hemat kuota & bisa bekerja offline.</div>
+      </div>
+      <button type="button" class="install-action-btn" onclick="PwaInstall.promptInstall()">
+        ⚡ Pasang Sekarang
+      </button>
+    </div>
     <div class="hero">
       <div>
         <p class="eyebrow">PRIVATE SYSTEM FIRDAUS IKRAM</p>
@@ -392,6 +411,7 @@
     </div>
   </main>
   <script src="cloud-sync.js"></script>
+  <script src="pwa-install.js"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       window.addEventListener('load', () => {

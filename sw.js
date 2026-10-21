@@ -1,4 +1,4 @@
-const CACHE = 'survei-lapangan-v11';
+const CACHE = 'survei-lapangan-v12';
 const FILES = [
   './',
   './index.html',
@@ -10,14 +10,29 @@ const FILES = [
   './mobile-adapter.js',
   './cloud-sync.css',
   './cloud-sync.js',
+  './pwa-install.css',
+  './pwa-install.js',
   './manifest.webmanifest',
+  './manifest.json',
   './icon-192.png',
   './icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => {
+      return Promise.allSettled(
+        FILES.map((url) =>
+          fetch(url, { cache: 'reload' })
+            .then((res) => {
+              if (res.ok) return c.put(url, res);
+            })
+            .catch(() => {})
+        )
+      );
+    })
+  );
 });
 
 self.addEventListener('activate', (e) => {
