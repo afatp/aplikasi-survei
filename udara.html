@@ -578,7 +578,8 @@
       position: absolute;
       inset: 0;
       width: 100%;
-      height: 100%
+      height: 100%;
+      touch-action: none;
     }
 
     .compass {
@@ -1405,6 +1406,13 @@
       margin: 1.5mm 0;
       position: relative;
       background: #fff
+    }
+
+    .signature-canvas canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
     }
 
     .signature-meta {
@@ -4426,12 +4434,35 @@
     window.getBrushMode = () => currentBrushMode;
 
     function initCanvas(id) {
-      const canvas = document.getElementById(id); const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1; canvas.width = Math.max(1, Math.floor(rect.width * dpr)); canvas.height = Math.max(1, Math.floor(rect.height * dpr));
-      const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 1.8; ctx.strokeStyle = '#111';
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      const zoom = (typeof getSheetZoom === 'function' ? getSheetZoom() : 1) || 1;
+      const rect = canvas.getBoundingClientRect();
+      const unscaledW = canvas.offsetWidth || (rect.width > 0 ? Math.round(rect.width / zoom) : (id === 'sketch' ? 700 : 300));
+      const unscaledH = canvas.offsetHeight || (rect.height > 0 ? Math.round(rect.height / zoom) : (id === 'sketch' ? 530 : 120));
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(unscaledW * dpr));
+      canvas.height = Math.max(1, Math.floor(unscaledH * dpr));
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = '#111';
       canvases[id] = { canvas, ctx, dpr, drawing: false, last: null, history: [] };
 
-      function pos(e) { const r = canvas.getBoundingClientRect(); const p = e.touches ? e.touches[0] : e; return { x: p.clientX - r.left, y: p.clientY - r.top }; }
+      function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        const p = (e.touches && e.touches.length > 0) ? e.touches[0] : ((e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0] : e);
+        const logicalW = canvas.width / dpr;
+        const logicalH = canvas.height / dpr;
+        const scaleX = r.width > 0 ? (logicalW / r.width) : 1;
+        const scaleY = r.height > 0 ? (logicalH / r.height) : 1;
+        return {
+          x: (p.clientX - r.left) * scaleX,
+          y: (p.clientY - r.top) * scaleY
+        };
+      }
 
       function applyBrushStyle() {
         if (id === 'sketch') {
@@ -4467,6 +4498,11 @@
         c.drawing = true;
         c.last = pos(e);
         applyBrushStyle();
+        // Dot immediately so tapping with pen or finger leaves a mark precisely under the tip
+        c.ctx.beginPath();
+        c.ctx.moveTo(c.last.x, c.last.y);
+        c.ctx.lineTo(c.last.x + 0.1, c.last.y + 0.1);
+        c.ctx.stroke();
       }
 
       function move(e) {
@@ -4492,8 +4528,13 @@
         }
       }
 
-      canvas.addEventListener('mousedown', down); canvas.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
-      canvas.addEventListener('touchstart', down, { passive: false }); canvas.addEventListener('touchmove', move, { passive: false }); window.addEventListener('touchend', up);
+      canvas.addEventListener('mousedown', down);
+      canvas.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      canvas.addEventListener('touchstart', down, { passive: false });
+      canvas.addEventListener('touchmove', move, { passive: false });
+      window.addEventListener('touchend', up);
+      window.addEventListener('touchcancel', up);
     }
     function clearCanvas(id) { const c = canvases[id]; if (!c) return; c.history.push(c.canvas.toDataURL()); c.ctx.globalAlpha = 1.0; c.ctx.clearRect(0, 0, c.canvas.width / c.dpr, c.canvas.height / c.dpr); autosaveSoon(); }
     function undoCanvas(id) { const c = canvases[id]; if (!c || !c.history.length) return; const src = c.history.pop(); const img = new Image(); img.onload = () => { c.ctx.globalAlpha = 1.0; c.ctx.clearRect(0, 0, c.canvas.width / c.dpr, c.canvas.height / c.dpr); c.ctx.drawImage(img, 0, 0, c.canvas.width / c.dpr, c.canvas.height / c.dpr); autosaveSoon(); }; img.src = src; }
