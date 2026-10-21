@@ -111,12 +111,18 @@
     padding:6px 10px;
     margin:0;
   }
-  .zoom-bar-row1{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .zoom-btn-back{background:#235fae;color:#fff;border:1px solid #4a88db;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:750;cursor:pointer}
+  .zoom-bar-row1{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .zoom-btn-back{background:#235fae;color:#fff;border:1px solid #4a88db;border-radius:7px;padding:4px 9px;font-size:11.5px;font-weight:750;cursor:pointer;white-space:nowrap}
   .zoom-btn-back:active{background:#1d4e8f}
+  .zoom-btn-pen{background:#334155;color:#f1f5f9;border:1px solid #64748b;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;touch-action:manipulation;transition:all 0.15s ease}
+  .zoom-btn-pen.is-active{background:#16a34a;color:#fff;border-color:#4ade80;box-shadow:0 0 8px rgba(34,197,94,0.4)}
+  .zoom-btn-pen:active{transform:scale(0.96)}
   .zoom-page-tabs{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
   .zoom-page-btn{background:rgba(255,255,255,0.12);color:#d1e2f6;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:650;cursor:pointer;white-space:nowrap}
   .zoom-page-btn.active{background:#2563eb;color:#fff;border-color:#60a5fa;font-weight:800}
+  .sketch-elem.selected .elem-controls,.sketch-elem:active .elem-controls,.sketch-elem.selected .elem-resizer,.sketch-elem:active .elem-resizer{display:flex!important}
+  .sketch-elem.selected .elem-rot-handle,.sketch-elem:active .elem-rot-handle{display:block!important}
+  .st-btn-pan.active{background:#0284c7!important;color:#fff!important}
   .zoom-bar-row2{display:flex;align-items:center;justify-content:space-between;gap:4px}
   .zoom-bar-row2 button{min-height:34px;padding:4px 8px;border-radius:7px;border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.12);color:#fff;font-size:11.5px;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
   .zoom-bar-row2 button:active{background:rgba(255,255,255,0.25);transform:scale(0.96)}

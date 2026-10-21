@@ -56,6 +56,7 @@
     <div class="mobile-paper-zoom-bar" id="mobilePaperZoomBar" role="toolbar" aria-label="Pengatur Ukuran Zoom Form A4">
       <div class="zoom-bar-row1">
         <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
+        <button type="button" class="zoom-btn-pen is-off" id="mobileTogglePen" title="Aktifkan / Nonaktifkan Pen (Mencegah layar tercoret saat digeser)">🖐️ Pen: OFF</button>
         <div class="zoom-page-tabs" id="mobileZoomPageTabs"></div>
       </div>
       <div class="zoom-bar-row2">
@@ -228,6 +229,30 @@
   }
   document.getElementById('mobileZoomBackToEasy')?.addEventListener('click',()=>setPreview(false));
 
+  const penBtn = document.getElementById('mobileTogglePen');
+  function syncPenButton(mode) {
+    if (!penBtn) return;
+    const isOff = mode === 'off';
+    penBtn.classList.toggle('is-off', isOff);
+    penBtn.classList.toggle('is-active', !isOff);
+    penBtn.innerHTML = isOff ? '🖐️ Pen: OFF' : '✏️ Pen: ON';
+    penBtn.title = isOff
+      ? 'Pen Nonaktif: Layar aman digeser / discroll tanpa mencoret. Ketuk untuk mengaktifkan'
+      : 'Pen Aktif: Siap menggambar sketsa. Ketuk untuk menonaktifkan agar layar bisa digeser';
+  }
+  window.updateMobilePenToolbar = syncPenButton;
+
+  penBtn?.addEventListener('click', () => {
+    const current = typeof window.getBrushMode === 'function' ? window.getBrushMode() : 'pen';
+    if (current === 'off') {
+      window.setBrushMode?.('pen');
+      showToast('✏️ Pen AKTIF: Siap menggambar sketsa');
+    } else {
+      window.setBrushMode?.('off');
+      showToast('🖐️ Pen NONAKTIF: Layar aman digeser');
+    }
+  });
+
   function getFitPageZoom() {
     const availW = Math.max(200, window.innerWidth - 12);
     // Fixed headers: toolbar (66) + strip (50) + zoom bar (76) + bottom actions (70)
@@ -372,6 +397,9 @@
       if(window.innerWidth<=1100 && !hasUserAdjustedZoom){
         setFitPageZoom();
       }
+      if(window.innerWidth<=1100 && typeof window.setBrushMode === 'function'){
+        window.setBrushMode('off');
+      }
       window.scrollTo({top:0,behavior:'instant'});
     }else{
       updateMirrors();
@@ -405,11 +433,20 @@
     document.getElementById('mobileDrawTitle').textContent=kind==='sketch'?'Sketsa/Denah Lokasi':'Tanda Tangan Petugas';
     const toolbar=document.getElementById('mobileDrawTools');toolbar.replaceChildren();
     if(kind==='sketch'){
-      for(const [title,type] of [['✎ Pensil','pen'],['≈ Kuas Sungai','river']]){const b=makeNode('button',type===drawBrush?'active':'',title);b.type='button';b.addEventListener('click',()=>{drawBrush=type;[...toolbar.children].forEach(x=>x.classList.toggle('active',x===b))});toolbar.append(b);}
+      for(const [title,type] of [['🖐️ Geser (Mati)','off'],['✎ Pensil','pen'],['≈ Kuas Sungai','river']]){
+        const b=makeNode('button',type===drawBrush?'active':'',title);
+        b.type='button';
+        b.addEventListener('click',()=>{
+          drawBrush=type;
+          [...toolbar.children].forEach(x=>x.classList.toggle('active',x===b));
+          if(type==='off') showToast('🖐️ Pen dinonaktifkan: Layar aman disentuh tanpa mencoret');
+        });
+        toolbar.append(b);
+      }
       for(const [title,type] of [['+ Titik','sampling_point'],['+ Teks','text'],['+ Gedung','building_rect'],['+ Jalan','road'],['+ Sungai','river'],['+ Hutan','forest']]){
         const b=makeNode('button','',title);b.type='button';b.addEventListener('click',()=>{if(typeof window.addSketchElement==='function'){window.addSketchElement(type);redrawEditor()} });toolbar.append(b);
       }
-      document.getElementById('mobileDrawNote').textContent='Gambar dengan jari atau tambahkan objek sketsa. Untuk menggeser, memutar, dan mengganti label objek, pilih Atur Objek pada Denah A4.';
+      document.getElementById('mobileDrawNote').textContent='Pilih 🖐️ Geser (Mati) jika hanya ingin melihat tanpa mencoret, atau gunakan ✎ Pensil / ≈ Kuas Sungai untuk menggambar.';
     }else{document.getElementById('mobileDrawNote').textContent='Tanda tangani dengan jari, lalu ketuk Selesai. Hasil masuk ke kolom tanda tangan formulir resmi.';}
     requestAnimationFrame(()=>{setupMiniCanvas();redrawEditor()});
   }
@@ -449,8 +486,8 @@
     ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);ctx.stroke();ctx.restore();
     redrawEditor();
   }
-  c.addEventListener('pointerdown',e=>{if(!drawSource)return;e.preventDefault();c.setPointerCapture?.(e.pointerId);mobileDrawing=true;drawLast=drawPos(e);const stack=ownHistory[drawKind];stack.push(drawSource.toDataURL('image/png'));if(stack.length>25)stack.shift();paintLine(drawLast,{x:drawLast.x+.15,y:drawLast.y+.15});});
-  c.addEventListener('pointermove',e=>{if(!mobileDrawing||!drawSource)return;e.preventDefault();const p=drawPos(e);paintLine(drawLast,p);drawLast=p;});
+  c.addEventListener('pointerdown',e=>{if(!drawSource||drawBrush==='off')return;e.preventDefault();c.setPointerCapture?.(e.pointerId);mobileDrawing=true;drawLast=drawPos(e);const stack=ownHistory[drawKind];stack.push(drawSource.toDataURL('image/png'));if(stack.length>25)stack.shift();paintLine(drawLast,{x:drawLast.x+.15,y:drawLast.y+.15});});
+  c.addEventListener('pointermove',e=>{if(!mobileDrawing||!drawSource||drawBrush==='off')return;e.preventDefault();const p=drawPos(e);paintLine(drawLast,p);drawLast=p;});
   function finishDraw(){if(mobileDrawing){mobileDrawing=false;drawLast=null;window.saveData?.();}}
   c.addEventListener('pointerup',finishDraw);c.addEventListener('pointercancel',finishDraw);
   function replaceImage(uri){if(!drawSource)return;const ctx=drawSource.getContext('2d');const dpr=window.devicePixelRatio||1;const cw=drawSource.width/dpr,ch=drawSource.height/dpr;

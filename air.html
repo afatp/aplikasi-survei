@@ -907,16 +907,17 @@
     /* Controls, Rotation Handle & Resize Handles */
     .elem-controls {
       position: absolute;
-      top: -26px;
+      top: -34px;
       right: 0;
       display: none;
-      gap: 3px;
+      gap: 4px;
       background: #0f172a;
-      padding: 3px 5px;
-      border-radius: 4px;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      padding: 4px 6px;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
       z-index: 30;
       pointer-events: auto;
+      touch-action: manipulation;
     }
 
     /* Continuous bridge between element and controls so hover is never lost */
@@ -942,46 +943,58 @@
       background: #334155;
       color: white;
       border: 0;
-      border-radius: 3px;
-      padding: 2px 5px;
-      font-size: 10px;
+      border-radius: 4px;
+      padding: 4px 7px;
+      font-size: 11px;
+      font-weight: bold;
       cursor: pointer;
       line-height: 1;
+      touch-action: manipulation;
     }
 
-    .elem-ctrl-btn:hover {
+    .elem-ctrl-btn:hover, .elem-ctrl-btn:active {
       background: #475569;
     }
 
-    .elem-ctrl-del:hover {
+    .elem-ctrl-del:hover, .elem-ctrl-del:active {
       background: #dc2626;
     }
 
     /* Top rotation handle for free, custom 360° rotation */
     .elem-rot-handle {
       position: absolute;
-      top: -22px;
+      top: -24px;
       left: 50%;
       transform: translateX(-50%);
-      width: 14px;
-      height: 14px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #0284c7;
       border: 2px solid #fff;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
       cursor: grab;
       display: none;
       z-index: 35;
       pointer-events: auto;
+      touch-action: none;
+    }
+
+    .elem-rot-handle::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
     }
 
     .elem-rot-handle::after {
       content: '';
       position: absolute;
-      top: 12px;
-      left: 4px;
+      top: 15px;
+      left: 6px;
       width: 2px;
-      height: 9px;
+      height: 10px;
       background: #0284c7;
     }
 
@@ -993,21 +1006,45 @@
 
     .elem-resizer {
       position: absolute;
-      right: 0;
-      bottom: 0;
-      width: 14px;
-      height: 14px;
+      right: -8px;
+      bottom: -8px;
+      width: 26px;
+      height: 26px;
       cursor: nwse-resize;
-      background: linear-gradient(135deg, transparent 50%, #1e293b 50%);
-      border-bottom-right-radius: 2px;
-      z-index: 20;
+      background: #0284c7;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      z-index: 28;
       display: none;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .elem-resizer::after {
+      content: '⤡';
+      display: block;
+      transform: rotate(45deg);
+    }
+
+    .elem-resizer::before {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: -12px;
+      right: -12px;
+      bottom: -12px;
     }
 
     .sketch-elem:hover .elem-resizer,
     .sketch-elem.selected .elem-resizer,
     .sketch-elem.resizing .elem-resizer {
-      display: block;
+      display: flex !important;
     }
 
     .elem-editable-text {
@@ -1897,7 +1934,7 @@
 @media print{.return-home{display:none!important;}.sketch-elem.selected{outline:none!important;}}
 </style><link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="stylesheet" href="mobile-adapter.css?v=6">
+<link rel="stylesheet" href="mobile-adapter.css?v=7">
 </head>
 
 <body>
@@ -2020,6 +2057,7 @@
 <div class="sketch-toolbar">
 <div class="st-grp">
 <span class="st-label">Garis/Kuas:</span>
+<button class="st-btn st-btn-mode st-btn-pan" id="btnModeOff" onclick="setBrushMode('off')" title="Nonaktifkan Pen / Kuas (Layar aman digeser tanpa mencoret)" type="button">🖐️ Geser (Pen Mati)</button>
 <button class="st-btn st-btn-mode active" id="btnModePen" onclick="setBrushMode('pen')" title="Mode Pensil / Garis Sketsa Biasa (Hitam 1.8px)" type="button">✏️ Pensil</button>
 <button class="st-btn st-btn-mode st-btn-river-brush" id="btnModeRiver" onclick="setBrushMode('river')" title="Mode Kuas Sungai (Biru Air 14px) - Bebas menggambar aliran sungai meliuk-liuk sesuai bentuk yang diinginkan" type="button">🌊
             Kuas Sungai</button>
@@ -2231,20 +2269,29 @@
 
     function setBrushMode(mode) {
       currentBrushMode = mode;
+      const btnOff = document.getElementById('btnModeOff');
       const btnPen = document.getElementById('btnModePen');
       const btnRiver = document.getElementById('btnModeRiver');
-      if (btnPen && btnRiver) {
-        if (mode === 'river') {
-          btnRiver.classList.add('active');
-          btnPen.classList.remove('active');
-          setStatus('Mode Kuas Sungai aktif: Bebas gambar aliran sungai pada denah');
-        } else {
-          btnPen.classList.add('active');
-          btnRiver.classList.remove('active');
-          setStatus('Mode Pensil aktif: Garis sketsa biasa');
-        }
+      const canvas = document.getElementById('sketch');
+
+      if (btnOff) btnOff.classList.toggle('active', mode === 'off');
+      if (btnPen) btnPen.classList.toggle('active', mode === 'pen');
+      if (btnRiver) btnRiver.classList.toggle('active', mode === 'river');
+
+      if (mode === 'off') {
+        if (canvas) canvas.style.pointerEvents = 'none';
+        setStatus('🖐️ Mode Geser aktif: Pen & kuas dinonaktifkan, layar aman digeser tanpa mencoret');
+      } else if (mode === 'river') {
+        if (canvas) canvas.style.pointerEvents = 'auto';
+        setStatus('🌊 Mode Kuas Sungai aktif: Bebas gambar aliran sungai pada denah');
+      } else {
+        if (canvas) canvas.style.pointerEvents = 'auto';
+        setStatus('✏️ Mode Pensil aktif: Garis sketsa biasa');
       }
+      window.updateMobilePenToolbar?.(mode);
     }
+    window.setBrushMode = setBrushMode;
+    window.getBrushMode = () => currentBrushMode;
 
     function initCanvas(id) {
       const canvas = document.getElementById(id); const rect = canvas.getBoundingClientRect();
@@ -2279,6 +2326,9 @@
       }
 
       function down(e) {
+        if (id === 'sketch' && currentBrushMode === 'off') {
+          return;
+        }
         e.preventDefault();
         const c = canvases[id];
         c.history.push(canvas.toDataURL());
@@ -2752,6 +2802,14 @@
       let activeResize = null;
       let activeRotate = null;
 
+      function getSheetZoom() {
+        const wrap = document.querySelector('.wrapper');
+        if (!wrap) return 1.0;
+        const val = getComputedStyle(wrap).getPropertyValue('--sheet-zoom');
+        const num = parseFloat(val);
+        return isNaN(num) || num <= 0 ? 1.0 : num;
+      }
+
       function getPointerPos(e) {
         const p = e.touches ? e.touches[0] : e;
         return { x: p.clientX, y: p.clientY };
@@ -2773,6 +2831,7 @@
           const item = sketchElements.find(it => it.id === parentId);
           if (item) {
             const pos = getPointerPos(e);
+            const zoom = getSheetZoom();
             activeMarkerDrag = {
               id: parentId,
               marker,
@@ -2780,7 +2839,8 @@
               startLeft: item.px !== undefined ? item.px : (item.x + 90),
               startTop: item.py !== undefined ? item.py : (item.y + 60),
               startX: pos.x,
-              startY: pos.y
+              startY: pos.y,
+              zoom
             };
             marker.classList.add('dragging');
             const parentElem = document.querySelector(`.sketch-elem[data-id="${parentId}"]`);
@@ -2817,40 +2877,45 @@
           e.stopPropagation();
           e.preventDefault();
           const id = elem.dataset.id;
-          const rect = elem.getBoundingClientRect();
           const pos = getPointerPos(e);
+          const zoom = getSheetZoom();
+          const item = sketchElements.find(it => it.id === id);
           activeResize = {
             id,
             elem,
-            startW: rect.width,
-            startH: rect.height,
+            startW: (item && item.w) || elem.offsetWidth,
+            startH: (item && item.h) || elem.offsetHeight,
             startX: pos.x,
-            startY: pos.y
+            startY: pos.y,
+            zoom
           };
           elem.classList.add('resizing');
           return;
         }
 
-        // 4. Do not drag if editing text or clicking controls
-        if (e.target.closest('.elem-controls') || e.target.isContentEditable || e.target.closest('.elem-editable-text')) {
+        // 4. Do not drag if clicking action buttons in controls
+        if (e.target.closest('.elem-controls')) {
           return;
         }
 
-        // 5. Drag the element (badge, building, road, circle, etc.)
+        // 5. Drag the element when touching ANYWHERE on the element body
         if (elem) {
-          e.stopPropagation();
-          e.preventDefault();
           const pos = getPointerPos(e);
-          const elemRect = elem.getBoundingClientRect();
+          const zoom = getSheetZoom();
+          const item = sketchElements.find(it => it.id === elem.dataset.id);
 
           activeDrag = {
             id: elem.dataset.id,
             elem,
-            offsetX: pos.x - elemRect.left,
-            offsetY: pos.y - elemRect.top
+            startX: pos.x,
+            startY: pos.y,
+            startLeft: (item && item.x !== undefined) ? item.x : (parseFloat(elem.style.left) || 0),
+            startTop: (item && item.y !== undefined) ? item.y : (parseFloat(elem.style.top) || 0),
+            zoom,
+            hasMoved: false,
+            target: e.target
           };
-          elem.classList.add('dragging');
-          layer.appendChild(elem);
+          elem.setPointerCapture?.(e.pointerId);
         }
       });
 
@@ -2858,12 +2923,13 @@
         if (activeMarkerDrag) {
           e.preventDefault();
           const pos = getPointerPos(e);
-          const cRect = container.getBoundingClientRect();
-          let left = Math.round(pos.x - cRect.left);
-          let top = Math.round(pos.y - cRect.top);
+          const dx = (pos.x - activeMarkerDrag.startX) / activeMarkerDrag.zoom;
+          const dy = (pos.y - activeMarkerDrag.startY) / activeMarkerDrag.zoom;
+          let left = Math.round(activeMarkerDrag.startLeft + dx);
+          let top = Math.round(activeMarkerDrag.startTop + dy);
 
-          left = Math.max(8, Math.min(left, container.clientWidth - 8));
-          top = Math.max(8, Math.min(top, container.clientHeight - 8));
+          left = Math.max(4, Math.min(left, container.clientWidth - 4));
+          top = Math.max(4, Math.min(top, container.clientHeight - 4));
 
           activeMarkerDrag.marker.style.left = left + 'px';
           activeMarkerDrag.marker.style.top = top + 'px';
@@ -2895,42 +2961,18 @@
               updateSamplingPointLine(item.id);
             }
           }
-        } else if (activeDrag) {
-          e.preventDefault();
-          const pos = getPointerPos(e);
-          const cRect = container.getBoundingClientRect();
-          let left = pos.x - cRect.left - activeDrag.offsetX;
-          let top = pos.y - cRect.top - activeDrag.offsetY;
-
-          const maxLeft = container.clientWidth - activeDrag.elem.offsetWidth;
-          const maxTop = container.clientHeight - activeDrag.elem.offsetHeight;
-
-          left = Math.max(-20, Math.min(left, maxLeft + 20));
-          top = Math.max(-20, Math.min(top, maxTop + 20));
-
-          activeDrag.elem.style.left = left + 'px';
-          activeDrag.elem.style.top = top + 'px';
-
-          const item = sketchElements.find(it => it.id === activeDrag.id);
-          if (item) {
-            item.x = left;
-            item.y = top;
-            if (item.type === 'sampling_point') {
-              updateSamplingPointLine(item.id);
-            }
-          }
         } else if (activeResize) {
           e.preventDefault();
           const pos = getPointerPos(e);
-          const dx = pos.x - activeResize.startX;
-          const dy = pos.y - activeResize.startY;
+          const dx = (pos.x - activeResize.startX) / activeResize.zoom;
+          const dy = (pos.y - activeResize.startY) / activeResize.zoom;
 
           const item = sketchElements.find(it => it.id === activeResize.id);
-          let newW = Math.max(40, Math.round(activeResize.startW + dx));
+          let newW = Math.max(30, Math.round(activeResize.startW + dx));
           let newH = Math.max(20, Math.round(activeResize.startH + dy));
 
           if (item && item.type === 'circle') {
-            const side = Math.max(newW, newH);
+            const side = Math.max(30, Math.max(newW, newH));
             newW = side;
             newH = side;
           }
@@ -2943,6 +2985,43 @@
             item.h = newH;
             if (item.type === 'sampling_point') {
               updateSamplingPointLine(item.id);
+            }
+          }
+        } else if (activeDrag) {
+          const pos = getPointerPos(e);
+          const dx = (pos.x - activeDrag.startX) / activeDrag.zoom;
+          const dy = (pos.y - activeDrag.startY) / activeDrag.zoom;
+
+          if (!activeDrag.hasMoved && Math.hypot(dx, dy) > 3) {
+            activeDrag.hasMoved = true;
+            activeDrag.elem.classList.add('dragging');
+            layer.appendChild(activeDrag.elem);
+            if (document.activeElement && document.activeElement.isContentEditable) {
+              document.activeElement.blur();
+            }
+          }
+
+          if (activeDrag.hasMoved) {
+            e.preventDefault();
+            let left = Math.round(activeDrag.startLeft + dx);
+            let top = Math.round(activeDrag.startTop + dy);
+
+            const maxLeft = container.clientWidth - activeDrag.elem.offsetWidth;
+            const maxTop = container.clientHeight - activeDrag.elem.offsetHeight;
+
+            left = Math.max(-20, Math.min(left, maxLeft + 20));
+            top = Math.max(-20, Math.min(top, maxTop + 20));
+
+            activeDrag.elem.style.left = left + 'px';
+            activeDrag.elem.style.top = top + 'px';
+
+            const item = sketchElements.find(it => it.id === activeDrag.id);
+            if (item) {
+              item.x = left;
+              item.y = top;
+              if (item.type === 'sampling_point') {
+                updateSamplingPointLine(item.id);
+              }
             }
           }
         }
@@ -2959,15 +3038,17 @@
           activeRotate = null;
           autosaveSoon();
         }
-        if (activeDrag) {
-          activeDrag.elem.classList.remove('dragging');
-          activeDrag = null;
-          autosaveSoon();
-        }
         if (activeResize) {
           activeResize.elem.classList.remove('resizing');
           activeResize = null;
           autosaveSoon();
+        }
+        if (activeDrag) {
+          if (activeDrag.hasMoved) {
+            autosaveSoon();
+          }
+          activeDrag.elem.classList.remove('dragging');
+          activeDrag = null;
         }
       };
 
@@ -3190,18 +3271,55 @@
 
       const controls = `
         <div class="elem-controls">
+          <button type="button" class="elem-ctrl-btn" onclick="resizeSketchElement('${item.id}', 25, event)" title="Perbesar Ukuran (+)">➕</button>
+          <button type="button" class="elem-ctrl-btn" onclick="resizeSketchElement('${item.id}', -25, event)" title="Perkecil Ukuran (−)">➖</button>
           <button type="button" class="elem-ctrl-btn" onclick="rotateSketchElement('${item.id}', event)" title="Putar Miring (+15°)">🔄</button>
           <button type="button" class="elem-ctrl-btn elem-ctrl-del" onclick="removeSketchElement('${item.id}', event)" title="Hapus Objek">✕</button>
         </div>
       `;
 
       let resizer = '';
-      if (item.type !== 'sampling_point' && item.type !== 'text' && item.type !== 'river') {
-        resizer = `<div class="elem-resizer" title="Tarik untuk atur panjang/ukuran"></div>`;
+      if (item.type !== 'sampling_point') {
+        resizer = `<div class="elem-resizer" title="Tarik sudut ini dengan jari untuk atur ukuran (panjang & lebar)"></div>`;
       }
 
       return rotHandle + controls + inner + resizer;
     }
+
+    function resizeSketchElement(id, delta, e) {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      const item = sketchElements.find(it => it.id === id);
+      if (!item) return;
+      const elem = document.querySelector(`.sketch-elem[data-id="${id}"]`);
+      if (!elem) return;
+
+      const curW = item.w || elem.offsetWidth || 100;
+      const curH = item.h || elem.offsetHeight || 40;
+      const aspect = curW / Math.max(1, curH);
+
+      let newW = Math.max(30, Math.round(curW + delta));
+      let newH = Math.max(20, Math.round(curH + (delta / aspect)));
+
+      if (item.type === 'circle') {
+        const side = Math.max(30, Math.round(curW + delta));
+        newW = side;
+        newH = side;
+      }
+
+      item.w = newW;
+      item.h = newH;
+      elem.style.width = newW + 'px';
+      elem.style.height = newH + 'px';
+
+      if (item.type === 'sampling_point') {
+        updateSamplingPointLine(id);
+      }
+      autosaveSoon();
+    }
+    window.resizeSketchElement = resizeSketchElement;
 
     function removeSketchElement(id, e) {
       if (e) {
@@ -3493,7 +3611,7 @@
       </div>
     </div>
   </div>
-<script src="mobile-adapter.js?v=6" defer></script>
+<script src="mobile-adapter.js?v=7" defer></script>
 </body>
 
 </html>
