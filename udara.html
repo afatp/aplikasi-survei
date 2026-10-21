@@ -1402,10 +1402,10 @@
 
     .signature-canvas {
       height: 22mm;
-      border-bottom: 1px solid #111;
-      margin: 1.5mm 0;
+      border: none;
+      margin: 1mm 0 0.5mm 0;
       position: relative;
-      background: #fff
+      background: transparent;
     }
 
     .signature-canvas canvas {
@@ -1418,28 +1418,58 @@
     .signature-meta {
       display: flex;
       flex-direction: column;
-      gap: 1mm;
-      margin-bottom: 1mm
+      align-items: center;
+      gap: 0.6mm;
+      margin-top: 1mm;
+      margin-bottom: 1mm;
     }
 
-    .signature-meta input {
+    .signature-name-input {
       border: 0;
-      border-bottom: 1px dashed #777;
       width: 100%;
       text-align: center;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       font-family: inherit;
       padding: 0.5mm 0;
       background: transparent;
       color: #000;
+      outline: none;
+    }
+
+    .signature-line {
+      width: 100%;
+      height: 0;
+      border-bottom: 1.2px solid #111;
+      margin: 0.4mm 0 0.8mm 0;
     }
 
     .signature-label {
       font-style: italic;
       font-size: 8.5px;
       color: #111;
-      text-decoration: underline;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .signature-date-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 8.5px;
+      color: #333;
+      margin-top: 0.5mm;
+    }
+
+    .signature-date-row input[type="date"] {
+      border: 0;
+      background: transparent;
+      font-size: 9px;
+      font-family: inherit;
+      color: #000;
+      outline: none;
+      padding: 0;
     }
 
     .small {
@@ -4296,10 +4326,12 @@
               <div class="canvas-tools" style="justify-content:center"><button type="button"
                   onclick="clearCanvas('signature')">Hapus Tanda Tangan</button></div>
               <div class="signature-canvas"><canvas id="signature"></canvas></div>
-              <div class="signature-meta"><input name="ttd_nama" placeholder="Nama"><input name="ttd_tanggal"
-                  type="date">
+              <div class="signature-meta">
+                <input name="ttd_nama" class="signature-name-input" placeholder="( Nama Petugas )">
+                <div class="signature-line"></div>
+                <div class="signature-label">Nama, TTd/Paraf &amp; Tanggal</div>
+                <div class="signature-date-row"><span>Tgl:</span> <input name="ttd_tanggal" type="date"></div>
               </div>
-              <div class="signature-label">Nama, TTd/Paraf &amp; Tanggal</div>
             </div>
           </div>
           <div class="footer"><span>No. Dok: FSOP-10.3.3.REK/UDARA AMBIEN</span><span>No.Revisi/Terbit:
