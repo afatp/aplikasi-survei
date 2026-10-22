@@ -1,4 +1,4 @@
-const CACHE = 'survei-lapangan-v22';
+const CACHE = 'survei-lapangan-v23';
 const FILES = [
   './',
   './index.html',

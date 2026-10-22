@@ -128,20 +128,11 @@
               </div>
               <div class="ai-field-group">
                 <label>Suhu Awal / Cadangan (°C)</label>
-                <input type="number" id="ai24hStartTemp" placeholder="Cth: 29.5" step="0.1">
+                <input type="number" id="ai24hStartTemp" placeholder="Cth: 36 (bulat)" step="1">
               </div>
               <div class="ai-field-group">
-                <label>Arah Angin Dominan</label>
-                <select id="ai24hWindDir">
-                  <option value="Timur" selected>Timur</option>
-                  <option value="Tenggara">Tenggara</option>
-                  <option value="Selatan">Selatan</option>
-                  <option value="Barat Daya">Barat Daya</option>
-                  <option value="Barat">Barat</option>
-                  <option value="Barat Laut">Barat Laut</option>
-                  <option value="Utara">Utara</option>
-                  <option value="Timur Laut">Timur Laut</option>
-                </select>
+                <label>Arah Angin Dominan (Derajat 0-360)</label>
+                <input type="number" id="ai24hWindDir" placeholder="Cth: 300 (derajat)" value="300" min="0" max="360">
               </div>
             </div>
 
@@ -344,6 +335,55 @@
     }
   }
 
+  // Helper to convert compass text or degrees to integer degree (0-360)
+  function toWindDegree(val, defaultDeg = 300) {
+    if (val === null || val === undefined) return defaultDeg;
+    const str = String(val).trim().toLowerCase();
+    const num = parseFloat(str);
+    if (!isNaN(num)) {
+      let deg = Math.round(num) % 360;
+      return deg === 0 ? 360 : deg;
+    }
+    const compassMap = {
+      'utara': 360, 'n': 360, 'north': 360,
+      'timur laut': 45, 'ne': 45, 'northeast': 45,
+      'timur': 90, 'e': 90, 'east': 90,
+      'tenggara': 135, 'se': 135, 'southeast': 135,
+      'selatan': 180, 's': 180, 'south': 180,
+      'barat daya': 225, 'sw': 225, 'southwest': 225,
+      'barat': 270, 'w': 270, 'west': 270,
+      'barat laut': 315, 'nw': 315, 'northwest': 315
+    };
+    return compassMap[str] || defaultDeg;
+  }
+
+  // Format integer values (no decimals for Tekanan, Suhu, Laju, RH)
+  function formatInteger(val, defaultVal = '0') {
+    if (val === null || val === undefined || String(val).trim() === '' || String(val).trim() === '-') {
+      return String(defaultVal);
+    }
+    const clean = String(val).replace(/[^0-9.-]/g, '');
+    const num = parseFloat(clean);
+    if (isNaN(num)) return String(val).trim();
+    return String(Math.round(num));
+  }
+
+  // Format wind speed: ONLY parameter with 1 decimal digit (e.g. 1.7)
+  function formatWindSpeed(val, defaultVal = '1.5') {
+    if (val === null || val === undefined || String(val).trim() === '' || String(val).trim() === '-') {
+      return String(defaultVal);
+    }
+    const clean = String(val).replace(/[^0-9.-]/g, '');
+    const num = parseFloat(clean);
+    if (isNaN(num)) return String(val).trim();
+    return num.toFixed(1);
+  }
+
+  // Format wind direction: ALWAYS numeric degrees (0 - 360)
+  function formatWindDir(val, defaultDeg = 300) {
+    return String(toWindDegree(val, defaultDeg));
+  }
+
   // Render Anchor Table in UI
   function renderAnchorTable() {
     const tbody = modal.querySelector('#aiAnchorTableBody');
@@ -362,13 +402,13 @@
           </select>
         </td>
         <td><input type="time" class="ai-anchor-waktu" value="${a.waktu || ''}"></td>
-        <td><input type="number" step="0.1" class="ai-anchor-suhu" placeholder="29.5" value="${a.suhu || ''}"></td>
-        <td><input type="number" step="0.1" class="ai-anchor-tekanan" placeholder="756.0" value="${a.tekanan || ''}"></td>
-        <td><input type="text" class="ai-anchor-laju" placeholder="1000 atau 12.0" value="${a.laju || ''}"></td>
-        <td><input type="number" class="ai-anchor-kelembaban" placeholder="68" value="${a.kelembaban || ''}"></td>
-        <td><input type="number" step="0.1" class="ai-anchor-kecepatan" placeholder="1.2" value="${a.kecepatan_angin || ''}"></td>
-        <td><input type="text" class="ai-anchor-arah" placeholder="185 / Timur" value="${a.arah_angin || ''}"></td>
-        <td><input type="text" class="ai-anchor-cuaca" placeholder="cerah" value="${a.cuaca || ''}"></td>
+        <td><input type="number" step="1" class="ai-anchor-suhu" placeholder="36" value="${a.suhu || ''}"></td>
+        <td><input type="number" step="1" class="ai-anchor-tekanan" placeholder="763" value="${a.tekanan || ''}"></td>
+        <td><input type="number" step="1" class="ai-anchor-laju" placeholder="100" value="${a.laju || ''}"></td>
+        <td><input type="number" step="1" class="ai-anchor-kelembaban" placeholder="39" value="${a.kelembaban || ''}"></td>
+        <td><input type="number" step="0.1" class="ai-anchor-kecepatan" placeholder="1.7" value="${a.kecepatan_angin || ''}"></td>
+        <td><input type="number" min="0" max="360" class="ai-anchor-arah" placeholder="300" value="${a.arah_angin || ''}"></td>
+        <td><input type="text" class="ai-anchor-cuaca" placeholder="Cerah" value="${a.cuaca || ''}"></td>
         <td><button type="button" class="ai-btn-sm danger ai-del-anchor-btn" title="Hapus titik ini">✕</button></td>
       </tr>
     `).join('');
@@ -412,12 +452,12 @@
     const r1Suhu = getField(`${p}_1_suhu`);
     if (r1Suhu) {
       const el = modal.querySelector('#ai24hStartTemp');
-      if (el) el.value = r1Suhu;
+      if (el) el.value = formatInteger(r1Suhu, '36');
     }
     const r1Angin = getField(`${p}_1_arah_angin`);
     if (r1Angin) {
       const el = modal.querySelector('#ai24hWindDir');
-      if (el) el.value = r1Angin;
+      if (el) el.value = formatWindDir(r1Angin, 300);
     }
 
     if (foundRows.length === 0) {
@@ -429,12 +469,12 @@
     anchorPoints = foundRows.map(r => ({
       hour: Number(r.hour),
       waktu: r.waktu || '',
-      suhu: r.suhu || '',
-      tekanan: r.tekanan || '',
-      laju: r.laju || '',
-      kelembaban: r.kelembaban || '',
-      kecepatan_angin: r.kecepatan_angin || '',
-      arah_angin: r.arah_angin || 'Timur',
+      suhu: formatInteger(r.suhu, ''),
+      tekanan: formatInteger(r.tekanan, ''),
+      laju: formatInteger(r.laju, ''),
+      kelembaban: formatInteger(r.kelembaban, ''),
+      kecepatan_angin: formatWindSpeed(r.kecepatan_angin, ''),
+      arah_angin: formatWindDir(r.arah_angin, 300),
       cuaca: r.cuaca || 'Cerah'
     }));
 
@@ -449,10 +489,10 @@
     const mStr = String(m || 0).padStart(2, '0');
 
     anchorPoints = [
-      { hour: 1, waktu: startTime, suhu: '28.5', tekanan: '756.2', laju: '1000', kelembaban: '70', kecepatan_angin: '1.2', arah_angin: 'Timur', cuaca: 'Cerah' },
-      { hour: 6, waktu: `${String((h + 5) % 24).padStart(2, '0')}:${mStr}`, suhu: '33.5', tekanan: '753.0', laju: '1000', kelembaban: '52', kecepatan_angin: '2.4', arah_angin: 'Timur Laut', cuaca: 'Cerah Berawan' },
-      { hour: 11, waktu: `${String((h + 10) % 24).padStart(2, '0')}:${mStr}`, suhu: '28.0', tekanan: '755.8', laju: '1000', kelembaban: '74', kecepatan_angin: '1.5', arah_angin: 'Timur', cuaca: 'Berawan' },
-      { hour: 20, waktu: `${String((h + 19) % 24).padStart(2, '0')}:${mStr}`, suhu: '24.2', tekanan: '758.2', laju: '1000', kelembaban: '88', kecepatan_angin: '0.8', arah_angin: 'Tenggara', cuaca: 'Berawan' }
+      { hour: 1, waktu: startTime, suhu: '28', tekanan: '756', laju: '100', kelembaban: '70', kecepatan_angin: '1.2', arah_angin: '90', cuaca: 'Cerah' },
+      { hour: 6, waktu: `${String((h + 5) % 24).padStart(2, '0')}:${mStr}`, suhu: '34', tekanan: '753', laju: '100', kelembaban: '52', kecepatan_angin: '2.4', arah_angin: '45', cuaca: 'Cerah Berawan' },
+      { hour: 11, waktu: `${String((h + 10) % 24).padStart(2, '0')}:${mStr}`, suhu: '28', tekanan: '756', laju: '100', kelembaban: '74', kecepatan_angin: '1.5', arah_angin: '90', cuaca: 'Berawan' },
+      { hour: 20, waktu: `${String((h + 19) % 24).padStart(2, '0')}:${mStr}`, suhu: '24', tekanan: '758', laju: '100', kelembaban: '88', kecepatan_angin: '0.8', arah_angin: '135', cuaca: 'Berawan' }
     ];
     sortAnchors();
     showToast('✓ Preset acuan tipikal berhasil dimuat');
@@ -476,10 +516,10 @@
       waktu: calcTime,
       suhu: '',
       tekanan: '',
-      laju: '1000',
+      laju: '100',
       kelembaban: '',
       kecepatan_angin: '',
-      arah_angin: 'Timur',
+      arah_angin: '300',
       cuaca: 'Cerah'
     });
     sortAnchors();
@@ -501,21 +541,21 @@
     const anchorMap = {};
     validAnchors.forEach(a => { anchorMap[a.hour] = a; });
 
-    let baseTemp = parseFloat(options.startTemp);
-    let baseTekanan = 756.0;
-    let baseLaju = '12.0';
-    let baseWindDir = options.dominantWind || 'Timur';
-    let baseCuaca = 'cerah';
+    let baseTemp = Math.round(parseFloat(options.startTemp));
+    let baseTekanan = 760;
+    let baseLaju = 100;
+    let baseDeg = toWindDegree(options.dominantWind || 300);
+    let baseCuaca = 'Cerah';
 
     if (validAnchors.length > 0) {
       const first = validAnchors[0];
-      if (first.suhu && !isNaN(parseFloat(first.suhu))) baseTemp = parseFloat(first.suhu);
-      if (first.tekanan && !isNaN(parseFloat(first.tekanan))) baseTekanan = parseFloat(first.tekanan);
-      if (first.laju && String(first.laju).trim()) baseLaju = String(first.laju).trim();
-      if (first.arah_angin) baseWindDir = first.arah_angin;
+      if (first.suhu && !isNaN(parseFloat(first.suhu))) baseTemp = Math.round(parseFloat(first.suhu));
+      if (first.tekanan && !isNaN(parseFloat(first.tekanan))) baseTekanan = Math.round(parseFloat(first.tekanan));
+      if (first.laju && !isNaN(parseFloat(first.laju))) baseLaju = Math.round(parseFloat(first.laju));
+      if (first.arah_angin) baseDeg = toWindDegree(first.arah_angin, baseDeg);
       if (first.cuaca) baseCuaca = first.cuaca;
     }
-    if (isNaN(baseTemp)) baseTemp = 29.5;
+    if (isNaN(baseTemp)) baseTemp = 30;
 
     const anchor1HourOfDay = startH % 24;
     const tempAmplitude = 8.5;
@@ -530,12 +570,12 @@
         rows.push({
           hour: h,
           waktu: a.waktu || timeStr,
-          tekanan: a.tekanan || String(baseTekanan),
-          suhu: a.suhu || String(baseTemp),
-          laju: a.laju || baseLaju,
-          kelembaban: a.kelembaban || '65',
-          kecepatan_angin: a.kecepatan_angin || '1.5',
-          arah_angin: a.arah_angin || baseWindDir,
+          tekanan: formatInteger(a.tekanan, baseTekanan),
+          suhu: formatInteger(a.suhu, baseTemp),
+          laju: formatInteger(a.laju, baseLaju),
+          kelembaban: formatInteger(a.kelembaban, '65'),
+          kecepatan_angin: formatWindSpeed(a.kecepatan_angin, '1.5'),
+          arah_angin: formatWindDir(a.arah_angin, baseDeg),
           cuaca: a.cuaca || baseCuaca,
           isAnchor: true
         });
@@ -545,17 +585,17 @@
 
         const anchorFactor = (0.5 - 0.5 * Math.cos(((anchor1HourOfDay - 4 + 24) % 24 / 24) * 2 * Math.PI)) || 1;
         const tempDiff = (diurnalFactor - anchorFactor) * tempAmplitude;
-        const tempVal = (baseTemp + tempDiff).toFixed(1);
+        const tempVal = String(Math.round(baseTemp + tempDiff));
 
-        const pressOffset = ((1 - diurnalFactor) * 3.5 - 1.8).toFixed(1);
-        const pressVal = (baseTekanan + parseFloat(pressOffset)).toFixed(1);
+        const pressOffset = (1 - diurnalFactor) * 3.5 - 1.8;
+        const pressVal = String(Math.round(baseTekanan + pressOffset));
 
         let baseRh = 65;
         if (validAnchors.length > 0 && validAnchors[0].kelembaban) {
           baseRh = parseFloat(validAnchors[0].kelembaban) || 65;
         }
         const rhDiff = (anchorFactor - diurnalFactor) * 32;
-        const rhVal = Math.min(95, Math.max(45, Math.round(baseRh + rhDiff)));
+        const rhVal = Math.min(95, Math.max(30, Math.round(baseRh + rhDiff)));
 
         let baseWindSpeed = 1.8;
         if (validAnchors.length > 0 && validAnchors[0].kecepatan_angin) {
@@ -566,32 +606,23 @@
 
         let weatherStr = baseCuaca;
         if (curH >= 6 && curH <= 17) {
-          weatherStr = diurnalFactor > 0.6 ? (baseCuaca || 'cerah') : 'cerah berawan';
+          weatherStr = diurnalFactor > 0.6 ? (baseCuaca || 'Cerah') : 'Cerah Berawan';
         } else {
-          weatherStr = 'berawan';
+          weatherStr = 'Berawan';
         }
 
-        let rowLaju = baseLaju;
-        const numLaju = parseFloat(baseLaju);
-        if (!isNaN(numLaju)) {
-          if (numLaju >= 500) {
-            const dev = (Math.sin(h * 1.7) * 3).toFixed(0);
-            rowLaju = String(numLaju + parseInt(dev, 10));
-          } else {
-            const dev = (Math.sin(h * 1.7) * 0.04).toFixed(2);
-            rowLaju = (numLaju + parseFloat(dev)).toFixed(2);
-          }
-        }
+        const degDev = Math.round(Math.sin(h * 1.3) * 6);
+        let curDeg = ((baseDeg + degDev + 360 - 1) % 360) + 1;
 
         rows.push({
           hour: h,
           waktu: timeStr,
           tekanan: pressVal,
           suhu: tempVal,
-          laju: rowLaju,
+          laju: String(baseLaju),
           kelembaban: String(rhVal),
           kecepatan_angin: windSpd,
-          arah_angin: baseWindDir,
+          arah_angin: String(curDeg),
           cuaca: weatherStr,
           isAnchor: false
         });
@@ -830,20 +861,21 @@
 
   // Direct 24-Hour Diurnal Projection with Real-Field Anchor Points
   async function directProject24h(apiKey, body) {
-    const { startTime = '08:00', startTemp, dominantWind = 'Timur', location = 'Indonesia', anchorPoints = [] } = body;
-    
+    const { startTime = '08:00', startTemp, dominantWind = '300', location = 'Indonesia', anchorPoints = [] } = body;
+    const dominantWindDeg = toWindDegree(dominantWind, 300);
+
     // Only accept anchors that have actual physical measurements
     const validAnchors = (anchorPoints || []).filter(a => a && a.hour >= 1 && a.hour <= 24 && hasMeasurement(a));
     const anchorMap = {};
     validAnchors.forEach(a => { anchorMap[Number(a.hour)] = a; });
 
     // Always compute baseline mathematical diurnal fallback to guarantee 0% empty cells
-    const baselineRows = localDiurnalFallback(startTime, validAnchors, { startTemp, dominantWind });
+    const baselineRows = localDiurnalFallback(startTime, validAnchors, { startTemp, dominantWind: dominantWindDeg });
 
-    // Determine baseline flow rate scale from anchors (e.g. 1000 HVAS or 12.0)
-    let baseLajuStr = '12.0';
+    // Determine baseline flow rate scale from anchors (e.g. 100 or 1000)
+    let baseLajuStr = '100';
     if (validAnchors.length > 0 && validAnchors[0].laju) {
-      baseLajuStr = String(validAnchors[0].laju).trim();
+      baseLajuStr = formatInteger(validAnchors[0].laju, '100');
     }
 
     let anchorPromptSection = '';
@@ -856,21 +888,21 @@ ATURAN UTAMA:
 1. Jam acuan di atas (Jam ${validAnchors.map(a => a.hour).join(', ')}) WAJIB 100% PERSIS DAN TIDAK BOLEH DIUBAH! Tandai "isAnchor": true HANYA pada jam ini.
 2. Jam-jam kosong (jam lainnya) WAJIB DILENGKAPI SELURUH KOLOMNYA (waktu, tekanan, suhu, laju, kelembaban, kecepatan_angin, arah_angin, cuaca).
    DILARANG KERAS MENGOSONGKAN ATAU MEMBERI TANDA STRIP (-) PADA KOLOM MANAPUN! Tandai "isAnchor": false.
-3. Laju alir (L/menit) pada seluruh jam wajib berada di kisaran angka alat sampel (${baseLajuStr}).
+3. Laju alir (L/menit) pada seluruh jam wajib berada di angka alat sampling (${baseLajuStr}).
 4. Suhu udara, tekanan atmosfer, dan kelembaban membentuk kurva diurnal alami yang menyambung mulus dengan data riil.`;
     }
 
     const systemPrompt = `Anda adalah pakar meteorologi dan pengukuran kualitas udara ambien lingkungan (Standar SNI & FSOP-10.3.3).
 Tugas Anda adalah memproyeksikan dan melengkapi data pencatatan 24 jam secara ilmiah, akurat, dan realistis untuk survei udara ambien di Indonesia.
 
-Pola diurnal fisika atmosfer yang WAJIB ditaati:
-1. Waktu: 24 jam berurutan dengan interval 1 jam, dimulai dari waktu ${startTime}.
-2. Suhu Udara (°C): Siang (11:00-14:00) puncak (31-34.5°C), sore menurun (29-27°C), malam sejuk stabil (26-25°C), subuh (03:00-05:00) terendah (23.5-25°C), pagi naik (26-29.5°C).
-3. Kelembaban (%RH): Korelasi terbalik dengan suhu. Siang (50-68%), malam & subuh (80-93%).
-4. Tekanan (mmHg): Pasang surut semidiurnal atmosfer (752-759 mmHg).
-5. Laju Alir (L/menit): Stabil sesuai alat sampling (${baseLajuStr}).
-6. Kecepatan Angin (m/s): Siang lebih aktif (1.2-3.2 m/s), malam tenang (0.4-1.5 m/s).
-7. Arah Angin: Konsisten dengan arah dominan (${dominantWind}).
+ATURAN FORMAT PENULISAN ANGKA (SANGAT KETAT):
+1. Tekanan Udara (mmHg): Bilangan BULAT tanpa koma/titik desimal (contoh: 763, 764, 762).
+2. Suhu Udara (°C): Bilangan BULAT tanpa koma/titik desimal (contoh: 36, 34, 32, 29, 27).
+3. Laju Alir (L/menit): Bilangan BULAT tanpa koma/titik desimal (contoh: 100, 1000).
+4. Kelembaban (%RH): Bilangan BULAT tanpa koma/titik desimal (contoh: 39, 40, 48, 55, 65).
+5. Kecepatan Angin (m/s): HANYA PARAMETER INI yang menggunakan TEPAT 1 angka di belakang titik (contoh: 1.7, 1.8, 1.5, 1.2, 1.0, 0.8).
+6. Arah Angin: WAJIB ANGKA DERAJAT (0 - 360), DILARANG MENGGUNAKAN KATA seperti "Timur", "Selatan", dsb! (contoh: 300, 295, 305, 302).
+7. Waktu: 24 jam berurutan dengan interval 1 jam, dimulai dari waktu ${startTime}.
 8. Cuaca: Alami (Cerah, Cerah Berawan, Berawan).
 ${anchorPromptSection}
 
@@ -884,13 +916,13 @@ Output WAJIB JSON persis:
     {
       "hour": 1,
       "waktu": "${startTime}",
-      "tekanan": "756.2",
-      "suhu": "29.4",
+      "tekanan": "763",
+      "suhu": "36",
       "laju": "${baseLajuStr}",
-      "kelembaban": "68",
-      "kecepatan_angin": "1.5",
-      "arah_angin": "${dominantWind}",
-      "cuaca": "Cerah Berawan",
+      "kelembaban": "39",
+      "kecepatan_angin": "1.7",
+      "arah_angin": "${dominantWindDeg}",
+      "cuaca": "Cerah",
       "isAnchor": true
     }
     ... sampai jam 24
@@ -898,9 +930,9 @@ Output WAJIB JSON persis:
 }`;
 
     const prompt = `Lengkapi proyeksi 24 jam lengkap dari jam 1 sampai jam 24.
-Waktu mulai: ${startTime}, Suhu awal/referensi: ${startTemp || 'otomatis'}, Arah dominan: ${dominantWind}.
+Waktu mulai: ${startTime}, Suhu awal/referensi: ${startTemp || 'otomatis'}, Arah dominan derajat: ${dominantWindDeg}.
 ${validAnchors.length > 0 ? `Kunci data riil jam [${validAnchors.map(a => a.hour).join(', ')}] persis apa adanya.` : ''}
-Pastikan seluruh 24 jam memiliki data lengkap untuk semua kolom (waktu, tekanan, suhu, laju, kelembaban, kecepatan_angin, arah_angin, cuaca).
+Pastikan seluruh 24 jam memiliki data lengkap untuk semua kolom. Ingat aturan format: tanpa angka di belakang titik kecuali kecepatan angin, dan arah angin wajib angka derajat.
 Kembalikan tepat 24 baris data dalam format JSON.`;
 
     let data = null;
@@ -933,33 +965,26 @@ Kembalikan tepat 24 baris data dalam format JSON.`;
         return cleanVal(fallbackVal) || '';
       };
 
-      if (anchor) {
-        mergedRows.push({
-          hour: h,
-          waktu: pickVal(anchor.waktu, geminiR?.waktu, fallbackR.waktu),
-          tekanan: pickVal(anchor.tekanan, geminiR?.tekanan, fallbackR.tekanan),
-          suhu: pickVal(anchor.suhu, geminiR?.suhu, fallbackR.suhu),
-          laju: pickVal(anchor.laju, geminiR?.laju, fallbackR.laju),
-          kelembaban: pickVal(anchor.kelembaban, geminiR?.kelembaban, fallbackR.kelembaban),
-          kecepatan_angin: pickVal(anchor.kecepatan_angin, geminiR?.kecepatan_angin, fallbackR.kecepatan_angin),
-          arah_angin: pickVal(anchor.arah_angin, geminiR?.arah_angin, fallbackR.arah_angin),
-          cuaca: pickVal(anchor.cuaca, geminiR?.cuaca, fallbackR.cuaca),
-          isAnchor: true
-        });
-      } else {
-        mergedRows.push({
-          hour: h,
-          waktu: pickVal('', geminiR?.waktu, fallbackR.waktu),
-          tekanan: pickVal('', geminiR?.tekanan, fallbackR.tekanan),
-          suhu: pickVal('', geminiR?.suhu, fallbackR.suhu),
-          laju: pickVal('', geminiR?.laju, fallbackR.laju),
-          kelembaban: pickVal('', geminiR?.kelembaban, fallbackR.kelembaban),
-          kecepatan_angin: pickVal('', geminiR?.kecepatan_angin, fallbackR.kecepatan_angin),
-          arah_angin: pickVal('', geminiR?.arah_angin, fallbackR.arah_angin),
-          cuaca: pickVal('', geminiR?.cuaca, fallbackR.cuaca),
-          isAnchor: false
-        });
-      }
+      const rawTekanan = pickVal(anchor ? anchor.tekanan : '', geminiR?.tekanan, fallbackR.tekanan);
+      const rawSuhu = pickVal(anchor ? anchor.suhu : '', geminiR?.suhu, fallbackR.suhu);
+      const rawLaju = pickVal(anchor ? anchor.laju : '', geminiR?.laju, fallbackR.laju);
+      const rawKelembaban = pickVal(anchor ? anchor.kelembaban : '', geminiR?.kelembaban, fallbackR.kelembaban);
+      const rawKecAngin = pickVal(anchor ? anchor.kecepatan_angin : '', geminiR?.kecepatan_angin, fallbackR.kecepatan_angin);
+      const rawArahAngin = pickVal(anchor ? anchor.arah_angin : '', geminiR?.arah_angin, fallbackR.arah_angin);
+      const rawCuaca = pickVal(anchor ? anchor.cuaca : '', geminiR?.cuaca, fallbackR.cuaca);
+
+      mergedRows.push({
+        hour: h,
+        waktu: pickVal(anchor ? anchor.waktu : '', geminiR?.waktu, fallbackR.waktu),
+        tekanan: formatInteger(rawTekanan, fallbackR.tekanan || 763),
+        suhu: formatInteger(rawSuhu, fallbackR.suhu || 36),
+        laju: formatInteger(rawLaju, fallbackR.laju || baseLajuStr),
+        kelembaban: formatInteger(rawKelembaban, fallbackR.kelembaban || 40),
+        kecepatan_angin: formatWindSpeed(rawKecAngin, fallbackR.kecepatan_angin || '1.5'),
+        arah_angin: formatWindDir(rawArahAngin, dominantWindDeg),
+        cuaca: rawCuaca || fallbackR.cuaca || 'Cerah',
+        isAnchor: !!anchor
+      });
     }
 
     return { rows: mergedRows };
