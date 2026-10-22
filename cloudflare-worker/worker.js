@@ -144,13 +144,28 @@ async function callGemini(apiKey, systemInstruction, prompt, options = {}) {
  * Handle 24-Hour Diurnal Meteorology Projection
  */
 async function handleProject24h(body, apiKey, request) {
-  const { startTime = '08:00', startTemp, startPressure, startHumidity, dominantWind = 'Timur', location = 'Indonesia', currentForm = {} } = body;
+  const { startTime = '08:00', startTemp, startPressure, startHumidity, dominantWind = 'Timur', location = 'Indonesia', anchorPoints = [] } = body;
+
+  const validAnchors = (anchorPoints || []).filter(a => a && a.hour >= 1 && a.hour <= 24);
+
+  let anchorPromptSection = '';
+  if (validAnchors.length > 0) {
+    anchorPromptSection = `
+DATA RIIL LAPANGAN YANG SUDAH DICATAT PETUGAS (GROUND TRUTH):
+${JSON.stringify(validAnchors, null, 2)}
+
+ATURAN UTAMA:
+1. Jam-jam acuan di atas (Jam ${validAnchors.map(a => a.hour).join(', ')}) WAJIB 100% PERSIS DAN TIDAK BOLEH DIUBAH! Tandai "isAnchor": true pada jam ini.
+2. Jam-jam kosong sebelum, di antara, dan sesudah titik acuan WAJIB diinterpolasikan secara mulus dan ilmiah (diurnal meteorologi).
+3. Laju alir (L/menit) pada jam-jam kosong stabil di sekitar angka alat yang tercatat pada titik acuan.
+4. Tekanan udara dan kelembaban membentuk fluktuasi pasang surut alami yang bersambung dengan data riil.`;
+  }
 
   const systemPrompt = `Anda adalah pakar meteorologi dan pengukuran kualitas udara ambien lingkungan (Standar SNI & FSOP-10.3.3).
-Tugas Anda adalah memproyeksikan data pencatatan 24 jam secara ilmiah, akurat, dan realistis untuk survei udara ambien di Indonesia.
+Tugas Anda adalah memproyeksikan dan melengkapi data pencatatan 24 jam secara ilmiah, akurat, dan realistis untuk survei udara ambien di Indonesia.
 
 Pola diurnal fisika atmosfer yang WAJIB ditaati:
-1. Waktu: 24 jam berurutan dengan interval 1 jam, dimulai dari waktu mulai yang diberikan (contoh: ${startTime}, lalu jam berikutnya hingga 24 baris).
+1. Waktu: 24 jam berurutan dengan interval 1 jam, dimulai dari waktu mulai ${startTime}.
 2. Suhu Udara (°C): 
    - Siang hari (11:00 - 14:00) mencapai puncak tertinggi (31.0°C s/d 34.5°C).
    - Sore hari (15:00 - 18:00) menurun perlahan (29.0°C s/d 27.0°C).
@@ -159,49 +174,42 @@ Pola diurnal fisika atmosfer yang WAJIB ditaati:
    - Pagi hari (06:00 - 08:00) mulai naik kembali (26.0°C s/d 29.5°C).
 3. Kelembaban Udara (%RH):
    - Korelasi terbalik sempurna dengan suhu.
-   - Siang terik: kelembaban terendah (55% s/d 68%).
+   - Siang terik: kelembaban terendah (50% s/d 68%).
    - Malam & dini hari: kelembaban tertinggi (80% s/d 93%).
 4. Tekanan Udara (mmHg):
-   - Pasang surut atmosfer (semi-diurnal atmospheric tide) dalam rentang 752.0 s/d 759.5 mmHg.
-   - Puncak pertama sekitar jam 09:00 - 10:00 pagi, puncak kedua sekitar jam 21:00 - 22:00 malam.
+   - Pasang surut semidiurnal atmosfer dalam rentang 752.0 s/d 759.5 mmHg.
 5. Laju Alir (L/menit):
-   - Sangat stabil sesuai alat sampler (HVAS / impinger), dengan variasi fluktuasi mikroskopis wajar (misal antara 1.18 s/d 1.22 atau 1.00 s/d 1.02).
+   - Sangat stabil sesuai alat sampler.
 6. Kecepatan Angin (m/s):
    - Siang lebih aktif (1.2 s/d 3.2 m/s), malam lebih tenang (0.4 s/d 1.5 m/s).
-7. Arah Angin:
-   - Konsisten mengikuti angin dominan (${dominantWind}) dengan sedikit variasi arah terdekat.
-8. Cuaca:
-   - Sesuai siklus: 'Cerah', 'Cerah Berawan', 'Berawan', dsb.
+7. Arah Angin: Konsisten dengan angin dominan (${dominantWind}).
+8. Cuaca: Alami (Cerah, Cerah Berawan, Berawan).
+${anchorPromptSection}
 
 Format output WAJIB JSON persis:
 {
-  "summary": "Proyeksi meteorologi 24 jam berbasis waktu mulai ${startTime} di ${location}",
+  "summary": "Proyeksi meteorologi 24 jam berbasis waktu mulai ${startTime}",
   "rows": [
     {
       "hour": 1,
       "waktu": "08:00",
       "tekanan": "756.2",
       "suhu": "29.4",
-      "laju": "1.20",
+      "laju": "12.0",
       "kelembaban": "68",
       "kecepatan_angin": "1.5",
-      "arah_angin": "Timur",
-      "cuaca": "Cerah Berawan"
-    },
+      "arah_angin": "${dominantWind}",
+      "cuaca": "Cerah Berawan",
+      "isAnchor": true
+    }
     ... (sampai jam ke-24)
   ]
 }`;
 
   const userPrompt = `Buatkan proyeksi 24 jam lengkap dari jam 1 s/d jam 24.
-Parameter awal:
-- Jam mulai: ${startTime}
-- Suhu awal: ${startTemp || 'otomatis'}
-- Tekanan awal: ${startPressure || 'otomatis'}
-- Kelembaban awal: ${startHumidity || 'otomatis'}
-- Arah angin dominan: ${dominantWind}
-- Lokasi: ${location}
-
-Pastikan menghasilkan tepat 24 baris data realistis dari jam 1 sampai jam 24 dalam format JSON valid.`;
+Waktu mulai: ${startTime}, Suhu awal/referensi: ${startTemp || 'otomatis'}, Arah angin: ${dominantWind}.
+${validAnchors.length > 0 ? `Pastikan data riil jam [${validAnchors.map(a => a.hour).join(', ')}] terkunci persis apa adanya.` : ''}
+Kembalikan tepat 24 baris data realistis dari jam 1 sampai jam 24 dalam format JSON.`;
 
   const resultText = await callGemini(apiKey, systemPrompt, userPrompt, { jsonMode: true, temperature: 0.2 });
   let parsed;
@@ -211,6 +219,15 @@ Pastikan menghasilkan tepat 24 baris data realistis dari jam 1 sampai jam 24 dal
     const jsonMatch = resultText.match(/\{[\s\S]*\}/);
     if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
     else throw new Error('Gagal mem-parsing format JSON dari Gemini');
+  }
+
+  if (parsed && Array.isArray(parsed.rows)) {
+    validAnchors.forEach(a => {
+      const idx = parsed.rows.findIndex(r => Number(r.hour) === Number(a.hour));
+      if (idx !== -1) {
+        parsed.rows[idx] = { ...parsed.rows[idx], ...a, isAnchor: true };
+      }
+    });
   }
 
   return new Response(JSON.stringify(parsed), {
@@ -230,32 +247,28 @@ async function handleCompleteForm(body, apiKey, request) {
   const systemPrompt = `Anda adalah asisten cerdas pengisian formulir survei laboratorium lingkungan PT LABORATORINDO ALAM BESTARI (Standar Akreditasi KAN, SNI & FSOP).
 Jenis Formulir: ${formType === 'air' ? 'Survei Sampel Air (FSOP-10.3.1)' : 'Survei Udara Ambien (FSOP-10.3.3)'}.
 
-Tugas Anda:
-Lengkapi kolom-kolom formulir yang masih KOSONG berdasarkan:
-1. Kolom-kolom yang sudah terisi sebelumnya (konteks yang konsisten).
-2. Instruksi khusus dari pengguna (jika ada).
-3. Standar baku teknis laboratorium lingkungan Indonesia (SNI, KemenLHK, BMKG).
-
-Aturan penting:
-- Jangan mengubah kolom yang sudah diisi pengguna dengan benar kecuali diminta.
-- Berikan nilai yang masuk akal secara teknis (misal pH air sungai alami 6.5 - 8.2, DO 4.5 - 7.5 mg/L, suhu air 25 - 29°C, koordinat format derajat/menit/detik yang valid).
-- Berikan penjelasan singkat mengenai data yang diisi.
+ATURAN UTAMA:
+1. Anda HANYA mengisi kolom yang KOSONG.
+2. Anda DILARANG mengubah kolom yang sudah terisi.
+3. Baca seluruh data formulir yang sudah terisi (seperti nama pelanggan, titik sampling, koordinat, waktu, cuaca, suhu, tekanan, dll) sebagai acuan kondisi nyata di lapangan.
+4. Nilai untuk kolom yang kosong harus logis, realistis, dan serasi dengan data riil yang sudah ada di formulir tersebut.
 
 Format output WAJIB JSON:
 {
-  "explanation": "Penjelasan singkat data yang dilengkapi",
+  "explanation": "Penjelasan singkat bagaimana data disesuaikan dengan kondisi riil form",
   "fieldsToFill": {
     "nama_kolom_1": "nilai_1",
     "nama_kolom_2": "nilai_2"
   }
 }`;
 
-  const userPrompt = `Berikut adalah kondisi form saat ini:
-- Kolom yang sudah diisi: ${JSON.stringify(filledFields, null, 2)}
-- Kolom yang masih kosong: ${JSON.stringify(emptyFields)}
-- Instruksi tambahan pengguna: ${userInstruction || 'Lengkapi kolom kosong yang esensial dengan data realistis dan konsisten.'}
+  const userPrompt = `DATA RIIL LAPANGAN YANG SUDAH TERISI DI FORM (Konteks Nyata):
+${JSON.stringify(filledFields, null, 2)}
 
-Kembalikan daftar field yang harus diisi dalam objek "fieldsToFill".`;
+DAFTAR KOLOM YANG MASIH KOSONG UNTUK DILENGKAPI:
+${JSON.stringify(emptyFields)}
+
+${userInstruction ? `INSTRUKSI TAMBAHAN PETUGAS LAPANGAN: ${userInstruction}` : 'Lengkapi kolom kosong di atas agar serasi dan akurat sesuai data riil yang sudah terisi.'}`;
 
   const resultText = await callGemini(apiKey, systemPrompt, userPrompt, { jsonMode: true, temperature: 0.3 });
   let parsed;
