@@ -1,14 +1,24 @@
 /**
  * AI Assistant Frontend Module for Sistem Survei Lapangan
- * Connects to Cloudflare Worker Gemini AI Proxy
+ * Dual-Mode: Direct Google Gemini API (Recommended for Indonesia, zero blocking)
+ * OR Cloudflare Worker Proxy
  */
 (function () {
   'use strict';
 
+  const STORAGE_KEY_APIKEY = 'survei_gemini_api_key';
   const STORAGE_KEY_WORKER = 'survei_ai_worker_url';
   const isAir = /air\.html/i.test(location.pathname) || !!document.querySelector('.water-sheet');
   const isUdara = /udara\.html/i.test(location.pathname) || (!isAir && !!document.querySelector('.sheet[data-page]'));
   const isIndex = !isAir && !isUdara;
+
+  function getApiKey() {
+    return localStorage.getItem(STORAGE_KEY_APIKEY) || '';
+  }
+
+  function setApiKey(key) {
+    localStorage.setItem(STORAGE_KEY_APIKEY, key.trim());
+  }
 
   function getWorkerUrl() {
     return localStorage.getItem(STORAGE_KEY_WORKER) || '';
@@ -37,7 +47,7 @@
           <div class="ai-header-badge">✨</div>
           <div class="ai-header-title">
             <h3>Asisten AI Lapangan</h3>
-            <p>Didukung Google Gemini AI via Cloud Proxy</p>
+            <p>Didukung Google Gemini AI (100% Gratis & Realtime)</p>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -50,7 +60,7 @@
         ${isUdara ? '<button type="button" class="ai-tab-btn active" data-tab="tab-24h">⚡ Proyeksi 24 Jam</button>' : ''}
         <button type="button" class="ai-tab-btn ${!isUdara ? 'active' : ''}" data-tab="tab-autofill">📋 Lengkapi Form</button>
         <button type="button" class="ai-tab-btn" data-tab="tab-chat">💬 Chat AI</button>
-        <button type="button" class="ai-tab-btn" data-tab="tab-settings">⚙️ Cloud</button>
+        <button type="button" class="ai-tab-btn" data-tab="tab-settings">⚙️ Pengaturan</button>
       </div>
 
       <div class="ai-modal-body">
@@ -59,7 +69,7 @@
         <div class="ai-tab-pane active" id="tab-24h">
           <div class="ai-card">
             <h4>⚡ Proyeksi Realtime 24 Jam (Meteorologi Diurnal)</h4>
-            <p>AI akan memproyeksikan fluktuasi alami 24 jam secara ilmiah (suhu dingin di subuh & puncak panas di siang hari, pasang surut tekanan udara, dan siklus kelembaban).</p>
+            <p>AI memproyeksikan fluktuasi alami 24 jam secara ilmiah (suhu dingin di subuh & puncak panas di siang hari, pasang surut tekanan udara, laju alir stabil, dan siklus kelembaban).</p>
             <div class="ai-input-grid">
               <div class="ai-field-group">
                 <label>Waktu Mulai Jam ke-1</label>
@@ -110,7 +120,7 @@
         <div class="ai-tab-pane ${!isUdara ? 'active' : ''}" id="tab-autofill">
           <div class="ai-card">
             <h4>📋 Lengkapi Kolom Form yang Kosong</h4>
-            <p>AI akan memindai formulir yang sedang aktif, mendeteksi isian yang belum lengkap, lalu melengkapinya secara logis dan ilmiah sesuai standar laboratorium.</p>
+            <p>AI memindai formulir yang sedang aktif, mendeteksi isian yang belum lengkap, lalu melengkapinya secara logis dan ilmiah sesuai standar laboratorium.</p>
             <div class="ai-field-group" style="margin-bottom:12px;">
               <label>Instruksi Tambahan (Opsional)</label>
               <textarea id="aiAutofillInstruction" rows="2" placeholder="Contoh: Survei air sungai di Jawa Timur musim kemarau, debit sedang, titik hulu"></textarea>
@@ -131,7 +141,7 @@
         <div class="ai-tab-pane" id="tab-chat">
           <div class="ai-chat-box" id="aiChatBox">
             <div class="ai-msg assistant">
-              Halo! Saya Asisten AI Laboratorindo Alam Bestari. Anda bisa bertanya tentang SOP sampling, metode pengawetan sampel, perhitungan debit, atau meminta saya mengisi bagian tertentu dari form. Ada yang bisa saya bantu?
+              Halo! Saya Asisten AI Laboratorindo Alam Bestari. Anda bisa bertanya tentang SOP sampling, metode pengawetan sampel, perhitungan debit, atau meminta saya melengkapi bagian tertentu dari form. Ada yang bisa saya bantu?
             </div>
           </div>
           <div class="ai-chat-input-row">
@@ -145,23 +155,31 @@
           </div>
         </div>
 
-        <!-- TAB 4: CLOUD CONFIGURATION -->
+        <!-- TAB 4: SETTINGS (API KEY & CLOUD) -->
         <div class="ai-tab-pane" id="tab-settings">
           <div class="ai-card">
-            <h4>⚙️ Pengaturan Koneksi Cloudflare Worker</h4>
-            <p>Masukkan URL Cloudflare Worker yang telah di-deploy (contoh: <code>https://survei-ai.nama-akun.workers.dev</code>). URL ini disimpan otomatis di perangkat ini.</p>
+            <h4>🔑 Google Gemini API Key (Rekomendasi Utama)</h4>
+            <p>Langsung terhubung ke Google AI Studio. <b>100% Gratis</b>, super cepat (&lt;1 detik), dan <b>bebas pemblokiran ISP di Indonesia</b>. Kunci tersimpan aman di memori perangkat ini (tidak di-upload ke GitHub).</p>
             <div class="ai-field-group" style="margin-bottom:12px;">
-              <label>Cloudflare Worker Proxy URL</label>
+              <label>Gemini API Key (Format: AIzaSy...)</label>
+              <div style="display:flex;gap:6px;">
+                <input type="password" id="aiApiKeyInput" placeholder="AIzaSyB..." style="flex:1;" />
+                <button type="button" id="aiToggleKeyVis" class="zoom-page-btn" style="padding:0 10px;" title="Lihat/Sembunyikan">👁️</button>
+              </div>
+              <small style="color:#64748b;font-size:11px;">Belum punya kunci? Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb;text-decoration:underline;">aistudio.google.com</a></small>
+            </div>
+
+            <hr style="border:0;border-top:1px dashed #cbd5e1;margin:16px 0;">
+
+            <h4>☁️ Atau Gunakan Cloudflare Worker (Opsional)</h4>
+            <p style="margin-bottom:8px;">Gunakan jika Anda memiliki domain Worker yang aktif (opsional).</p>
+            <div class="ai-field-group" style="margin-bottom:12px;">
+              <label>Worker URL</label>
               <input type="url" id="aiWorkerUrlInput" placeholder="https://survei-ai.subdomain.workers.dev" />
             </div>
-            <button type="button" class="ai-btn-primary" id="aiSaveWorkerUrlBtn">💾 Uji & Simpan Koneksi</button>
-            <div id="aiTestResult" style="margin-top:10px;font-size:12px;"></div>
-            <div style="margin-top:16px;padding:12px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;font-size:11.5px;color:#1e40af;line-height:1.5;">
-              <b>Petunjuk Deploy Cloudflare Worker (100% Gratis):</b><br>
-              1. Buka file panduan <code>cloudflare-worker/README.md</code> di folder aplikasi.<br>
-              2. Buat Worker di Cloudflare Dashboard & tempel kode <code>worker.js</code>.<br>
-              3. Tambahkan secret <code>GEMINI_API_KEY</code> di pengaturan Worker Cloudflare.
-            </div>
+
+            <button type="button" class="ai-btn-primary" id="aiSaveSettingsBtn">💾 Simpan & Uji Koneksi</button>
+            <div id="aiTestResult" style="margin-top:12px;font-size:12px;"></div>
           </div>
         </div>
       </div>
@@ -172,6 +190,14 @@
   // Cache pending AI data
   let pending24hData = null;
   let pendingAutofillData = null;
+
+  // Toggle API key visibility
+  modal.querySelector('#aiToggleKeyVis')?.addEventListener('click', () => {
+    const input = modal.querySelector('#aiApiKeyInput');
+    if (input) {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+  });
 
   // Tab switching
   modal.querySelectorAll('.ai-tab-btn').forEach(btn => {
@@ -188,7 +214,7 @@
   // Modal open/close
   function openModal() {
     modal.classList.add('is-open');
-    checkWorkerStatus();
+    checkConnectionStatus();
     updateEmptyCount();
   }
   function closeModal() {
@@ -201,78 +227,266 @@
     if (e.target === modal) closeModal();
   });
 
-  // Check Worker Connection
-  async function checkWorkerStatus() {
+  // Check Connection Status
+  async function checkConnectionStatus() {
     const pill = modal.querySelector('#aiStatusPill');
     const text = modal.querySelector('#aiStatusText');
+    const keyInput = modal.querySelector('#aiApiKeyInput');
     const urlInput = modal.querySelector('#aiWorkerUrlInput');
+    const apiKey = getApiKey();
     const workerUrl = getWorkerUrl();
 
+    if (keyInput) keyInput.value = apiKey;
     if (urlInput) urlInput.value = workerUrl;
 
-    if (!workerUrl) {
+    if (!apiKey && !workerUrl) {
       pill.className = 'ai-status-indicator offline';
-      text.textContent = 'Cloud Belum Disetel';
+      text.textContent = 'Belum Dikonfigurasi';
       return false;
     }
 
-    text.textContent = 'Menghubungkan...';
-    try {
-      const res = await fetch(workerUrl + '/', { method: 'GET', mode: 'cors' });
-      if (res.ok) {
-        pill.className = 'ai-status-indicator online';
-        text.textContent = 'AI Online';
-        return true;
-      } else {
-        pill.className = 'ai-status-indicator offline';
-        text.textContent = 'Error ' + res.status;
-        return false;
-      }
-    } catch (e) {
-      pill.className = 'ai-status-indicator offline';
-      text.textContent = 'Offline / Gagal Hubung';
-      return false;
+    if (apiKey) {
+      pill.className = 'ai-status-indicator online';
+      text.textContent = 'AI Online (Gemini)';
+      return true;
+    }
+
+    if (workerUrl) {
+      pill.className = 'ai-status-indicator online';
+      text.textContent = 'AI Online (Cloud)';
+      return true;
     }
   }
 
-  // Save & Test Worker URL
-  modal.querySelector('#aiSaveWorkerUrlBtn')?.addEventListener('click', async () => {
-    const input = modal.querySelector('#aiWorkerUrlInput');
+  // Save & Test Settings
+  modal.querySelector('#aiSaveSettingsBtn')?.addEventListener('click', async () => {
+    const keyInput = modal.querySelector('#aiApiKeyInput');
+    const urlInput = modal.querySelector('#aiWorkerUrlInput');
     const resultDiv = modal.querySelector('#aiTestResult');
-    let val = input.value.trim().replace(/\/+$/, '');
-    if (!val) {
-      resultDiv.innerHTML = '<span style="color:#dc2626;">Silakan masukkan URL Cloudflare Worker yang valid.</span>';
+    const keyVal = keyInput.value.trim();
+    let urlVal = urlInput.value.trim().replace(/\/+$/, '');
+
+    if (!keyVal && !urlVal) {
+      resultDiv.innerHTML = '<span style="color:#dc2626;font-weight:700;">Silakan masukkan Gemini API Key atau URL Cloudflare Worker.</span>';
       return;
     }
-    // Auto-prepend https:// if missing
-    if (!/^https?:\/\//i.test(val)) {
-      val = 'https://' + val;
-      input.value = val;
-    }
 
-    if (/\.pages\.dev$/i.test(new URL(val).hostname)) {
-      resultDiv.innerHTML = '<span style="color:#b45309;font-weight:700;">⚠️ Peringatan: Anda memasukkan domain Cloudflare Pages (.pages.dev).<br>Skrip backend yang kita buat adalah <b>Cloudflare Worker (.workers.dev)</b>. Silakan buat Worker di tab "Workers" di dashboard Cloudflare Anda.</span>';
-    } else {
-      resultDiv.innerHTML = '<span style="color:#2563eb;">Menguji koneksi ke ' + val + '...</span>';
-    }
-
-    try {
-      const res = await fetch(val + '/', { method: 'GET', mode: 'cors' });
-      if (res.ok) {
-        setWorkerUrl(val);
-        resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Berhasil terhubung ke Cloudflare Worker! Status: Online</span>';
-        checkWorkerStatus();
-      } else {
-        let extraTip = '';
-        if (res.status === 404 && /\.pages\.dev$/i.test(new URL(val).hostname)) {
-          extraTip = '<br><b>Solusi:</b> Di Cloudflare Dashboard, pilih tab <b>Workers</b> (bukan Pages), lalu buat Worker baru dan paste kode <code>worker.js</code>.';
+    // 1. If API Key provided, test Gemini directly
+    if (keyVal) {
+      resultDiv.innerHTML = '<span style="color:#2563eb;">Menguji koneksi langsung ke Google Gemini API...</span>';
+      try {
+        const testRes = await directCallGemini(keyVal, '', 'Ping test. Jawab singkat: OK', { maxTokens: 10 });
+        if (testRes) {
+          setApiKey(keyVal);
+          if (urlVal) setWorkerUrl(urlVal);
+          resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Berhasil terhubung ke Google Gemini AI! Status: Online & Aktif.</span>';
+          checkConnectionStatus();
+          return;
         }
-        resultDiv.innerHTML = `<span style="color:#dc2626;">Worker merespons status ${res.status}. ${extraTip}</span>`;
+      } catch (err) {
+        resultDiv.innerHTML = `<span style="color:#dc2626;font-weight:700;">Gagal menghubungkan Gemini API Key: ${err.message}. Pastikan kunci diawali 'AIzaSy' dan valid.</span>`;
+        return;
       }
-    } catch (err) {
-      resultDiv.innerHTML = '<span style="color:#dc2626;">Gagal menghubungi Worker: ' + err.message + '. Periksa URL dan koneksi internet Anda.</span>';
+    }
+
+    // 2. If only Worker URL provided, test Worker
+    if (urlVal) {
+      if (!/^https?:\/\//i.test(urlVal)) {
+        urlVal = 'https://' + urlVal;
+        urlInput.value = urlVal;
+      }
+      resultDiv.innerHTML = '<span style="color:#2563eb;">Menguji koneksi ke ' + urlVal + '...</span>';
+      try {
+        const res = await fetch(urlVal + '/', { method: 'GET', mode: 'cors' });
+        if (res.ok) {
+          setWorkerUrl(urlVal);
+          resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Berhasil terhubung ke Cloudflare Worker! Status: Online</span>';
+          checkConnectionStatus();
+        } else {
+          resultDiv.innerHTML = `<span style="color:#dc2626;">Worker merespons status ${res.status}.</span>`;
+        }
+      } catch (err) {
+        resultDiv.innerHTML = `<span style="color:#dc2626;">Gagal menghubungi Worker: ${err.message}. Di Indonesia, domain *.workers.dev sering diblokir ISP. Disarankan memasukkan Gemini API Key langsung di atas.</span>`;
+      }
     }
   });
+
+  // Call Gemini REST API directly
+  async function directCallGemini(apiKey, systemInstruction, prompt, options = {}) {
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    let lastErr = null;
+
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const payload = {
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: options.temperature ?? 0.3,
+            maxOutputTokens: options.maxTokens ?? 3500
+          }
+        };
+
+        if (systemInstruction) {
+          payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+        }
+        if (options.jsonMode) {
+          payload.generationConfig.responseMimeType = 'application/json';
+        }
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr;
+  }
+
+  // Unified AI Caller (Direct Gemini preferred, Cloudflare fallback)
+  async function callAi(endpoint, body) {
+    const apiKey = getApiKey();
+    const workerUrl = getWorkerUrl();
+
+    if (apiKey) {
+      if (endpoint === '/api/project-24h') {
+        return await directProject24h(apiKey, body);
+      } else if (endpoint === '/api/complete-form') {
+        return await directCompleteForm(apiKey, body);
+      } else {
+        return await directChat(apiKey, body);
+      }
+    } else if (workerUrl) {
+      const res = await fetch(workerUrl + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Server error ' + res.status);
+      }
+      return await res.json();
+    } else {
+      throw new Error('Belum ada koneksi AI yang disetel. Silakan buka tab [⚙️ Pengaturan] dan masukkan Gemini API Key Anda.');
+    }
+  }
+
+  // Direct 24-Hour Diurnal Projection
+  async function directProject24h(apiKey, body) {
+    const { startTime = '08:00', startTemp, dominantWind = 'Timur', location = 'Indonesia' } = body;
+    const systemPrompt = `Anda adalah pakar meteorologi dan pengukuran kualitas udara ambien lingkungan (Standar SNI & FSOP-10.3.3).
+Tugas Anda adalah memproyeksikan data pencatatan 24 jam secara ilmiah, akurat, dan realistis untuk survei udara ambien di Indonesia.
+
+Pola diurnal fisika atmosfer yang WAJIB ditaati:
+1. Waktu: 24 jam berurutan dengan interval 1 jam, dimulai dari waktu ${startTime}.
+2. Suhu Udara (°C): Siang (11:00-14:00) puncak (31-34.5°C), sore menurun (29-27°C), malam sejuk stabil (26-25°C), subuh (03:00-05:00) terendah (23.5-25°C), pagi naik (26-29.5°C).
+3. Kelembaban (%RH): Korelasi terbalik dengan suhu. Siang (55-68%), malam & subuh (80-93%).
+4. Tekanan (mmHg): Pasang surut atmosfer (752-759 mmHg).
+5. Laju Alir (L/menit): Stabil sesuai alat sampling (misal 1.19 s/d 1.21).
+6. Kecepatan Angin (m/s): Siang lebih aktif (1.2-3.2 m/s), malam tenang (0.4-1.5 m/s).
+7. Arah Angin: Konsisten dengan arah dominan (${dominantWind}).
+8. Cuaca: Alami (Cerah, Cerah Berawan, Berawan).
+
+Output WAJIB JSON persis:
+{
+  "rows": [
+    {
+      "hour": 1,
+      "waktu": "08:00",
+      "tekanan": "756.2",
+      "suhu": "29.4",
+      "laju": "1.20",
+      "kelembaban": "68",
+      "kecepatan_angin": "1.5",
+      "arah_angin": "${dominantWind}",
+      "cuaca": "Cerah Berawan"
+    }
+    ... sampai jam 24
+  ]
+}`;
+
+    const prompt = `Buatkan proyeksi 24 jam lengkap dari jam 1 sampai jam 24.
+Waktu mulai: ${startTime}, Suhu awal: ${startTemp || 'otomatis'}, Arah angin: ${dominantWind}, Lokasi: ${location}.
+Kembalikan tepat 24 baris data dalam format JSON.`;
+
+    const txt = await directCallGemini(apiKey, systemPrompt, prompt, { jsonMode: true, temperature: 0.2 });
+    try {
+      return JSON.parse(txt);
+    } catch (e) {
+      const match = txt.match(/\{[\s\S]*\}/);
+      if (match) return JSON.parse(match[0]);
+      throw new Error('Gagal membaca format JSON dari Gemini');
+    }
+  }
+
+  // Direct Smart Form Completion
+  async function directCompleteForm(apiKey, body) {
+    const { formType, emptyFields = [], filledFields = {}, userInstruction = '' } = body;
+    const systemPrompt = `Anda adalah asisten cerdas pengisian formulir survei laboratorium lingkungan PT LABORATORINDO ALAM BESTARI (Standar KAN, SNI & FSOP).
+Jenis Formulir: ${formType === 'air' ? 'Survei Sampel Air (FSOP-10.3.1)' : 'Survei Udara Ambien (FSOP-10.3.3)'}.
+
+Tugas: Lengkapi kolom formulir yang masih KOSONG berdasarkan konteks yang ada dan standar teknis.
+Format output WAJIB JSON:
+{
+  "explanation": "Penjelasan singkat data yang dilengkapi",
+  "fieldsToFill": {
+    "nama_kolom": "nilai"
+  }
+}`;
+
+    const prompt = `Kolom yang sudah diisi: ${JSON.stringify(filledFields)}
+Kolom yang masih kosong: ${JSON.stringify(emptyFields)}
+Instruksi pengguna: ${userInstruction || 'Lengkapi kolom kosong yang penting secara realistis dan konsisten.'}`;
+
+    const txt = await directCallGemini(apiKey, systemPrompt, prompt, { jsonMode: true, temperature: 0.3 });
+    try {
+      return JSON.parse(txt);
+    } catch (e) {
+      const match = txt.match(/\{[\s\S]*\}/);
+      if (match) return JSON.parse(match[0]);
+      throw new Error('Gagal membaca format JSON');
+    }
+  }
+
+  // Direct Chat
+  async function directChat(apiKey, body) {
+    const { message = '', context = {} } = body;
+    const systemPrompt = `Anda adalah "LabBestari AI", Asisten Cerdas Lapangan untuk PT LABORATORINDO ALAM BESTARI.
+Anda terintegrasi langsung di aplikasi survei (Air FSOP-10.3.1 & Udara Ambien FSOP-10.3.3).
+Jawab pertanyaan seputar sampling lingkungan, baku mutu, rumus debit, atau bantu lengkapi data form secara ramah, profesional, dan dalam bahasa Indonesia.
+Jika diminta memperbarui data form, cantumkan blok:
+\`\`\`form_update
+{
+  "fields": {
+    "nama_field": "nilai"
+  }
+}
+\`\`\``;
+
+    const resText = await directCallGemini(apiKey, systemPrompt, message, { temperature: 0.4 });
+    let suggestedFields = null;
+    const match = resText.match(/```form_update\s*([\s\S]*?)\s*```/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        suggestedFields = parsed.fields || parsed;
+      } catch (e) {}
+    }
+    const cleanReply = resText.replace(/```form_update[\s\S]*?```/, '').trim();
+    return { reply: cleanReply, suggestedFields };
+  }
 
   // Count empty fields in the active form
   function scanFormFields() {
@@ -298,15 +512,8 @@
     el.innerHTML = `Terdeteksi <b>${empty.length}</b> kolom kosong dari total ${total} kolom formulir aktif.`;
   }
 
-  // Handle 24-Hour Diurnal Projection
+  // Handle 24-Hour Diurnal Projection Click
   modal.querySelector('#aiGenerate24hBtn')?.addEventListener('click', async () => {
-    const workerUrl = getWorkerUrl();
-    if (!workerUrl) {
-      alert('URL Cloudflare Worker belum disetel. Silakan buka tab [⚙️ Cloud] terlebih dahulu.');
-      modal.querySelector('[data-tab="tab-settings"]').click();
-      return;
-    }
-
     const btn = modal.querySelector('#aiGenerate24hBtn');
     const resultArea = modal.querySelector('#ai24hResultArea');
     const tbody = modal.querySelector('#ai24hTableBody');
@@ -318,23 +525,13 @@
     btn.textContent = '⏳ Menghitung proyeksi meteorologi diurnal via Gemini AI...';
 
     try {
-      const res = await fetch(workerUrl + '/api/project-24h', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startTime,
-          startTemp,
-          dominantWind: windDir,
-          location: 'Indonesia'
-        })
+      const data = await callAi('/api/project-24h', {
+        startTime,
+        startTemp,
+        dominantWind: windDir,
+        location: 'Indonesia'
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Server error ' + res.status);
-      }
-
-      const data = await res.json();
       pending24hData = data.rows || [];
 
       tbody.innerHTML = pending24hData.map(r => `
@@ -353,7 +550,10 @@
       resultArea.style.display = 'block';
       showToast('✓ Proyeksi 24 jam berhasil digenerate');
     } catch (err) {
-      alert('Gagal menghasilkan proyeksi: ' + err.message);
+      alert(err.message);
+      if (err.message.includes('Pengaturan')) {
+        modal.querySelector('[data-tab="tab-settings"]').click();
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = '⚡ Generate Proyeksi 24 Jam';
@@ -386,15 +586,8 @@
     closeModal();
   });
 
-  // Handle Smart Autofill for Empty Fields
+  // Handle Smart Autofill for Empty Fields Click
   modal.querySelector('#aiRunAutofillBtn')?.addEventListener('click', async () => {
-    const workerUrl = getWorkerUrl();
-    if (!workerUrl) {
-      alert('URL Cloudflare Worker belum disetel. Buka tab [⚙️ Cloud].');
-      modal.querySelector('[data-tab="tab-settings"]').click();
-      return;
-    }
-
     const btn = modal.querySelector('#aiRunAutofillBtn');
     const resultArea = modal.querySelector('#aiAutofillResultArea');
     const summaryDiv = modal.querySelector('#aiAutofillSummary');
@@ -411,23 +604,13 @@
     btn.textContent = '⏳ AI sedang menganalisis & mengisi kolom kosong...';
 
     try {
-      const res = await fetch(workerUrl + '/api/complete-form', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          formType: isAir ? 'air' : 'udara',
-          emptyFields: empty.slice(0, 45), // process up to 45 empty fields at a time
-          filledFields: filled,
-          userInstruction: instruction
-        })
+      const data = await callAi('/api/complete-form', {
+        formType: isAir ? 'air' : 'udara',
+        emptyFields: empty.slice(0, 40),
+        filledFields: filled,
+        userInstruction: instruction
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Server error ' + res.status);
-      }
-
-      const data = await res.json();
       pendingAutofillData = data.fieldsToFill || {};
 
       summaryDiv.textContent = data.explanation || 'AI telah menyiapkan data untuk kolom yang kosong:';
@@ -441,7 +624,10 @@
       resultArea.style.display = 'block';
       showToast('✓ Data berhasil dianalisis oleh AI');
     } catch (err) {
-      alert('Gagal melengkapi data: ' + err.message);
+      alert(err.message);
+      if (err.message.includes('Pengaturan')) {
+        modal.querySelector('[data-tab="tab-settings"]').click();
+      }
     } finally {
       btn.disabled = false;
       btn.textContent = '✨ Analisis & Lengkapi Data Kosong';
@@ -462,29 +648,20 @@
     closeModal();
   });
 
-  // Handle General AI Chat
+  // Handle General AI Chat Click
   modal.querySelector('#aiChatSendBtn')?.addEventListener('click', async () => {
     const input = modal.querySelector('#aiChatInput');
     const chatBox = modal.querySelector('#aiChatBox');
     const msg = input.value.trim();
     if (!msg) return;
 
-    const workerUrl = getWorkerUrl();
-    if (!workerUrl) {
-      alert('URL Cloudflare Worker belum disetel. Buka tab [⚙️ Cloud].');
-      modal.querySelector('[data-tab="tab-settings"]').click();
-      return;
-    }
-
     input.value = '';
-    // Append user message
     const userMsg = document.createElement('div');
     userMsg.className = 'ai-msg user';
     userMsg.textContent = msg;
     chatBox.appendChild(userMsg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Loading indicator
     const loadingMsg = document.createElement('div');
     loadingMsg.className = 'ai-msg assistant';
     loadingMsg.textContent = 'Sedang berpikir...';
@@ -492,26 +669,13 @@
     chatBox.scrollTop = chatBox.scrollHeight;
 
     try {
-      const res = await fetch(workerUrl + '/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: msg,
-          context: {
-            formType: isAir ? 'air' : isUdara ? 'udara' : 'beranda'
-          }
-        })
+      const data = await callAi('/api/chat', {
+        message: msg,
+        context: { formType: isAir ? 'air' : isUdara ? 'udara' : 'beranda' }
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Server error ' + res.status);
-      }
-
-      const data = await res.json();
       loadingMsg.innerHTML = formatAiMarkdown(data.reply);
 
-      // If AI proposed form updates
       if (data.suggestedFields && Object.keys(data.suggestedFields).length > 0) {
         const applyBtn = document.createElement('button');
         applyBtn.className = 'ai-btn-primary ai-btn-apply';
@@ -533,7 +697,6 @@
     chatBox.scrollTop = chatBox.scrollHeight;
   });
 
-  // Enter to send in chat input
   modal.querySelector('#aiChatInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       modal.querySelector('#aiChatSendBtn').click();
@@ -572,7 +735,7 @@
     setTimeout(() => { t.style.opacity = '0'; }, 2200);
   }
 
-  // Simple Markdown formatter for AI reply
+  // Simple Markdown formatter
   function formatAiMarkdown(txt) {
     if (!txt) return '';
     return txt
@@ -599,4 +762,7 @@
       modal.querySelector('[data-tab="tab-autofill"]')?.click();
     }
   };
+
+  // Run initial check
+  checkConnectionStatus();
 })();
