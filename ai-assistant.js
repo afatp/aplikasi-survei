@@ -239,20 +239,35 @@
   modal.querySelector('#aiSaveWorkerUrlBtn')?.addEventListener('click', async () => {
     const input = modal.querySelector('#aiWorkerUrlInput');
     const resultDiv = modal.querySelector('#aiTestResult');
-    const val = input.value.trim().replace(/\/+$/, '');
+    let val = input.value.trim().replace(/\/+$/, '');
     if (!val) {
       resultDiv.innerHTML = '<span style="color:#dc2626;">Silakan masukkan URL Cloudflare Worker yang valid.</span>';
       return;
     }
-    resultDiv.innerHTML = '<span style="color:#2563eb;">Menguji koneksi ke ' + val + '...</span>';
+    // Auto-prepend https:// if missing
+    if (!/^https?:\/\//i.test(val)) {
+      val = 'https://' + val;
+      input.value = val;
+    }
+
+    if (/\.pages\.dev$/i.test(new URL(val).hostname)) {
+      resultDiv.innerHTML = '<span style="color:#b45309;font-weight:700;">⚠️ Peringatan: Anda memasukkan domain Cloudflare Pages (.pages.dev).<br>Skrip backend yang kita buat adalah <b>Cloudflare Worker (.workers.dev)</b>. Silakan buat Worker di tab "Workers" di dashboard Cloudflare Anda.</span>';
+    } else {
+      resultDiv.innerHTML = '<span style="color:#2563eb;">Menguji koneksi ke ' + val + '...</span>';
+    }
+
     try {
       const res = await fetch(val + '/', { method: 'GET', mode: 'cors' });
       if (res.ok) {
         setWorkerUrl(val);
-        resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Berhasil terhubung ke Cloudflare Worker!</span>';
+        resultDiv.innerHTML = '<span style="color:#16a34a;font-weight:700;">✓ Berhasil terhubung ke Cloudflare Worker! Status: Online</span>';
         checkWorkerStatus();
       } else {
-        resultDiv.innerHTML = '<span style="color:#dc2626;">Worker merespons status ' + res.status + '. Pastikan GEMINI_API_KEY sudah disetel di Cloudflare.</span>';
+        let extraTip = '';
+        if (res.status === 404 && /\.pages\.dev$/i.test(new URL(val).hostname)) {
+          extraTip = '<br><b>Solusi:</b> Di Cloudflare Dashboard, pilih tab <b>Workers</b> (bukan Pages), lalu buat Worker baru dan paste kode <code>worker.js</code>.';
+        }
+        resultDiv.innerHTML = `<span style="color:#dc2626;">Worker merespons status ${res.status}. ${extraTip}</span>`;
       }
     } catch (err) {
       resultDiv.innerHTML = '<span style="color:#dc2626;">Gagal menghubungi Worker: ' + err.message + '. Periksa URL dan koneksi internet Anda.</span>';
