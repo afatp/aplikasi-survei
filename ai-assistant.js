@@ -161,12 +161,12 @@
             <h4>🔑 Google Gemini API Key (Rekomendasi Utama)</h4>
             <p>Langsung terhubung ke Google AI Studio. <b>100% Gratis</b>, super cepat (&lt;1 detik), dan <b>bebas pemblokiran ISP di Indonesia</b>. Kunci tersimpan aman di memori perangkat ini (tidak di-upload ke GitHub).</p>
             <div class="ai-field-group" style="margin-bottom:12px;">
-              <label>Gemini API Key (Format: AIzaSy...)</label>
+              <label>Gemini API Key (Google AI Studio)</label>
               <div style="display:flex;gap:6px;">
-                <input type="password" id="aiApiKeyInput" placeholder="AIzaSyB..." style="flex:1;" />
+                <input type="password" id="aiApiKeyInput" placeholder="Tempelkan API Key (AIzaSy... atau AQ.Ab...)" style="flex:1;" />
                 <button type="button" id="aiToggleKeyVis" class="zoom-page-btn" style="padding:0 10px;" title="Lihat/Sembunyikan">👁️</button>
               </div>
-              <small style="color:#64748b;font-size:11px;">Belum punya kunci? Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb;text-decoration:underline;">aistudio.google.com</a></small>
+              <small style="color:#64748b;font-size:11px;">Kunci resmi Google AI Studio (berawalan AIzaSy... atau AQ.Ab...). Dapatkan gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#2563eb;text-decoration:underline;">aistudio.google.com</a></small>
             </div>
 
             <hr style="border:0;border-top:1px dashed #cbd5e1;margin:16px 0;">
@@ -284,7 +284,7 @@
           return;
         }
       } catch (err) {
-        resultDiv.innerHTML = `<span style="color:#dc2626;font-weight:700;">Gagal menghubungkan Gemini API Key: ${err.message}. Pastikan kunci diawali 'AIzaSy' dan valid.</span>`;
+        resultDiv.innerHTML = `<span style="color:#dc2626;font-weight:700;">Gagal menghubungkan Gemini API Key: ${err.message}. Periksa kembali kunci API Anda.</span>`;
         return;
       }
     }
@@ -313,7 +313,15 @@
 
   // Call Gemini REST API directly
   async function directCallGemini(apiKey, systemInstruction, prompt, options = {}) {
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const models = [
+      'gemini-flash-lite-latest',
+      'gemini-3.1-flash-lite',
+      'gemini-flash-latest',
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash'
+    ];
     let lastErr = null;
 
     for (const model of models) {

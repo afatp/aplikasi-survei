@@ -87,51 +87,57 @@ function corsHeaders(request) {
 }
 
 /**
- * Call Google Gemini REST API (gemini-2.0-flash with fallback to gemini-1.5-flash)
+ * Call Google Gemini REST API with robust model fallback
  */
 async function callGemini(apiKey, systemInstruction, prompt, options = {}) {
-  const model = options.model || 'gemini-2.0-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const models = [
+    options.model,
+    'gemini-flash-lite-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-flash-latest',
+    'gemini-3.8-flash',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash'
+  ].filter(Boolean);
 
-  const payload = {
-    contents: [{
-      role: 'user',
-      parts: [{ text: prompt }]
-    }],
-    generationConfig: {
-      temperature: options.temperature ?? 0.3,
-      maxOutputTokens: options.maxTokens ?? 3000
+  let lastErr = null;
+  for (const model of models) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options.temperature ?? 0.3,
+          maxOutputTokens: options.maxTokens ?? 3500
+        }
+      };
+
+      if (systemInstruction) {
+        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+      }
+      if (options.jsonMode) {
+        payload.generationConfig.responseMimeType = 'application/json';
+      }
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`(${res.status}): ${errText}`);
+      }
+
+      const data = await res.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } catch (e) {
+      lastErr = e;
     }
-  };
-
-  if (systemInstruction) {
-    payload.systemInstruction = {
-      parts: [{ text: systemInstruction }]
-    };
   }
-
-  if (options.jsonMode) {
-    payload.generationConfig.responseMimeType = 'application/json';
-  }
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    // Fallback to gemini-1.5-flash if 2.0-flash isn't available
-    if (model !== 'gemini-1.5-flash' && res.status >= 400 && res.status < 500) {
-      return callGemini(apiKey, systemInstruction, prompt, { ...options, model: 'gemini-1.5-flash' });
-    }
-    throw new Error(`Gemini API Error (${res.status}): ${errorText}`);
-  }
-
-  const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return text;
+  throw new Error(`Gemini API Error: ${lastErr?.message || lastErr}`);
 }
 
 /**
