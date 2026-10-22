@@ -1982,6 +1982,7 @@
   <link rel="stylesheet" href="mobile-adapter.css?v=11">
   <link rel="stylesheet" href="cloud-sync.css">
   <link rel="stylesheet" href="pwa-install.css">
+  <link rel="stylesheet" href="ai-assistant.css">
 </head>
 
 <body>
@@ -2007,6 +2008,8 @@
         </summary>
         <div class="more-dropdown">
           <div class="dropdown-heading">DATA & PENGELOLAAN</div>
+          <button type="button" onclick="window.AiAssistant?.open();document.getElementById('moreActionsMenu').open=false">✨ Buka Asisten AI Gemini <span>✨</span></button>
+          <button type="button" onclick="window.AiAssistant?.autofill();document.getElementById('moreActionsMenu').open=false">📋 Lengkapi Form Otomatis <span>✨</span></button>
           <button type="button" onclick="window.print();document.getElementById('moreActionsMenu').open=false">🖨️ Cetak / Unduh PDF A4 <span>⎙</span></button>
           <button type="button" onclick="PwaInstall.promptInstall();document.getElementById('moreActionsMenu').open=false">📲 Pasang Aplikasi di HP <span>↓</span></button>
           <button type="button" onclick="CloudSync.openModal();document.getElementById('moreActionsMenu').open=false">☁️ Sinkron Google Drive <span>⤾</span></button>
@@ -3718,6 +3721,7 @@
   </div>
 <script src="cloud-sync.js"></script>
 <script src="pwa-install.js"></script>
+<script src="ai-assistant.js"></script>
 <script src="mobile-adapter.js?v=10" defer></script>
 </body>
 

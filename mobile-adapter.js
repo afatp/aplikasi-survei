@@ -89,6 +89,7 @@
           <span class="cloud-pulse-dot"></span><span>☁️ Drive Sync</span>
         </button>
         ${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}
+        <button type="button" onclick="window.AiAssistant?.open()" style="background:#f5f3ff;color:#6d28d9;border-color:#ddd6fe;font-weight:800;" title="Buka Asisten AI Gemini">✨ AI Asisten</button>
         <button type="button" id="mobileReset" class="is-danger" title="Kosongkan seluruh isian formulir project ini">🗑️ Kosongkan form</button>
       </div>
       <div id="mobileFields"></div>

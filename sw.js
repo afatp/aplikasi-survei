@@ -1,4 +1,4 @@
-const CACHE = 'survei-lapangan-v17';
+const CACHE = 'survei-lapangan-v18';
 const FILES = [
   './',
   './index.html',
@@ -12,6 +12,8 @@ const FILES = [
   './cloud-sync.js',
   './pwa-install.css',
   './pwa-install.js',
+  './ai-assistant.css',
+  './ai-assistant.js',
   './manifest.webmanifest',
   './manifest.json',
   './icon-192.png',
