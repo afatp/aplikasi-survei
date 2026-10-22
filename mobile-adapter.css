@@ -40,8 +40,8 @@
   .toolbar .more-dropdown .danger-action{color:#dc2626!important;font-weight:750!important;background:#fef2f2!important;border:1px solid #fecaca!important;margin-top:6px!important}
   .toolbar .more-dropdown .danger-action:hover,
   .toolbar .more-dropdown .danger-action:active{background:#fee2e2!important;color:#b91c1c!important}
-  .mobile-menu-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.48);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:99990;opacity:0;pointer-events:none;transition:opacity 0.18s ease}
-  .mobile-menu-backdrop.is-active{opacity:1;pointer-events:auto}
+  .mobile-menu-backdrop{position:fixed;inset:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;z-index:99990;pointer-events:none}
+  .mobile-menu-backdrop.is-active{pointer-events:auto}
   .projects-strip{top:56px!important;padding:0 8px!important;gap:6px!important;min-height:42px;height:42px!important;z-index:70;display:flex!important;align-items:center!important;justify-content:space-between!important;background:#1e293b}
   .project-bar{max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;min-width:0!important;flex:1 1 auto!important;height:42px!important;display:flex!important;align-items:center!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-x pan-y!important;overscroll-behavior-x:contain!important;scroll-behavior:smooth}
   .project-bar::-webkit-scrollbar{display:none}
