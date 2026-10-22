@@ -270,7 +270,14 @@
     return (el.value || '').trim();
   }
 
-  // Scan 24-hour table rows in active form
+  // Check if a row has actual physical measurement data
+  function hasMeasurement(r) {
+    if (!r) return false;
+    const s = (v) => (v != null ? String(v).trim() : '');
+    return !!(s(r.suhu) || s(r.tekanan) || s(r.laju) || s(r.kelembaban));
+  }
+
+  // Scan 24-hour table rows in active form (ONLY rows with actual measurements)
   function scan24hTable(targetPrefix) {
     const prefixes = (!targetPrefix || targetPrefix === 'all') ? ['tsp24', 'pm10', 'pm25'] : [targetPrefix];
     const mapByHour = {};
@@ -286,7 +293,8 @@
         const arah_angin = getField(`${prefix}_${h}_arah_angin`);
         const cuaca = getField(`${prefix}_${h}_cuaca`);
 
-        if (waktu || suhu || tekanan || laju || kelembaban || kecepatan_angin || arah_angin || cuaca) {
+        // Row is ONLY considered real data if it contains actual physical measurements (suhu, tekanan, laju, or kelembaban)
+        if (hasMeasurement({ suhu, tekanan, laju, kelembaban })) {
           if (!mapByHour[h]) {
             mapByHour[h] = {
               hour: h,
@@ -329,10 +337,10 @@
 
     if (foundRows.length > 0) {
       banner.className = 'ai-banner-realdata';
-      textEl.innerHTML = `🟢 Terdeteksi <b>${foundRows.length} jam data riil</b> di formulir (Jam ${foundRows.map(r => r.hour).join(', ')}). AI akan mengunci data riil ini dan hanya melengkapi jam yang masih kosong.`;
+      textEl.innerHTML = `🟢 Terdeteksi <b>${foundRows.length} jam data riil</b> di formulir (Jam ${foundRows.map(r => r.hour).join(', ')}). AI akan mengunci data riil ini dan melengkapi jam lainnya secara otomatis.`;
     } else {
       banner.className = 'ai-banner-realdata empty';
-      textEl.innerHTML = `ℹ️ Belum terdeteksi data jam di form. Anda bisa klik <b>[➕ Tambah Acuan]</b> atau <b>[✨ Preset Tipikal]</b> untuk memasukkan sampel kondisi nyata lapangan.`;
+      textEl.innerHTML = `ℹ️ Belum terdeteksi data jam di form. Masukkan waktu mulai & parameter di bawah, atau gunakan tombol <b>[➕ Tambah Acuan]</b> / <b>[✨ Preset Tipikal]</b>.`;
     }
   }
 
@@ -356,15 +364,11 @@
         <td><input type="time" class="ai-anchor-waktu" value="${a.waktu || ''}"></td>
         <td><input type="number" step="0.1" class="ai-anchor-suhu" placeholder="29.5" value="${a.suhu || ''}"></td>
         <td><input type="number" step="0.1" class="ai-anchor-tekanan" placeholder="756.0" value="${a.tekanan || ''}"></td>
-        <td><input type="text" class="ai-anchor-laju" placeholder="12.0" value="${a.laju || ''}"></td>
+        <td><input type="text" class="ai-anchor-laju" placeholder="1000 atau 12.0" value="${a.laju || ''}"></td>
         <td><input type="number" class="ai-anchor-kelembaban" placeholder="68" value="${a.kelembaban || ''}"></td>
         <td><input type="number" step="0.1" class="ai-anchor-kecepatan" placeholder="1.2" value="${a.kecepatan_angin || ''}"></td>
-        <td>
-          <select class="ai-anchor-arah">
-            ${['Timur', 'Tenggara', 'Selatan', 'Barat Daya', 'Barat', 'Barat Laut', 'Utara', 'Timur Laut'].map(d => `<option value="${d}" ${d === a.arah_angin ? 'selected' : ''}>${d}</option>`).join('')}
-          </select>
-        </td>
-        <td><input type="text" class="ai-anchor-cuaca" placeholder="Cerah" value="${a.cuaca || ''}"></td>
+        <td><input type="text" class="ai-anchor-arah" placeholder="185 / Timur" value="${a.arah_angin || ''}"></td>
+        <td><input type="text" class="ai-anchor-cuaca" placeholder="cerah" value="${a.cuaca || ''}"></td>
         <td><button type="button" class="ai-btn-sm danger ai-del-anchor-btn" title="Hapus titik ini">✕</button></td>
       </tr>
     `).join('');
@@ -380,7 +384,7 @@
       tr.querySelector('.ai-anchor-laju')?.addEventListener('input', (e) => { anchorPoints[idx].laju = e.target.value; });
       tr.querySelector('.ai-anchor-kelembaban')?.addEventListener('input', (e) => { anchorPoints[idx].kelembaban = e.target.value; });
       tr.querySelector('.ai-anchor-kecepatan')?.addEventListener('input', (e) => { anchorPoints[idx].kecepatan_angin = e.target.value; });
-      tr.querySelector('.ai-anchor-arah')?.addEventListener('change', (e) => { anchorPoints[idx].arah_angin = e.target.value; });
+      tr.querySelector('.ai-anchor-arah')?.addEventListener('input', (e) => { anchorPoints[idx].arah_angin = e.target.value; });
       tr.querySelector('.ai-anchor-cuaca')?.addEventListener('input', (e) => { anchorPoints[idx].cuaca = e.target.value; });
       tr.querySelector('.ai-del-anchor-btn')?.addEventListener('click', () => {
         anchorPoints.splice(idx, 1);
@@ -398,8 +402,27 @@
     const targetPrefix = modal.querySelector('#ai24hTargetTable')?.value || 'all';
     const foundRows = scan24hTable(targetPrefix);
 
+    // Auto-sync start time & initial params from Row 1 of form if filled
+    const p = targetPrefix === 'all' ? 'tsp24' : targetPrefix;
+    const r1Waktu = getField(`${p}_1_waktu`);
+    if (r1Waktu) {
+      const el = modal.querySelector('#ai24hStartTime');
+      if (el) el.value = r1Waktu;
+    }
+    const r1Suhu = getField(`${p}_1_suhu`);
+    if (r1Suhu) {
+      const el = modal.querySelector('#ai24hStartTemp');
+      if (el) el.value = r1Suhu;
+    }
+    const r1Angin = getField(`${p}_1_arah_angin`);
+    if (r1Angin) {
+      const el = modal.querySelector('#ai24hWindDir');
+      if (el) el.value = r1Angin;
+    }
+
     if (foundRows.length === 0) {
-      alert('Belum ada baris data yang terisi di formulir aktif. Silakan isi beberapa baris di formulir terlebih dahulu, atau gunakan tombol [➕ Tambah Acuan] / [✨ Preset Tipikal].');
+      refreshRealDataBanner();
+      renderAnchorTable();
       return;
     }
 
@@ -417,7 +440,7 @@
 
     sortAnchors();
     refreshRealDataBanner();
-    showToast(`✓ Berhasil memuat ${anchorPoints.length} titik acuan dari form`);
+    showToast(`✓ Berhasil mendeteksi ${anchorPoints.length} jam data riil dari form`);
   }
 
   function setPresetAnchors() {
@@ -426,10 +449,10 @@
     const mStr = String(m || 0).padStart(2, '0');
 
     anchorPoints = [
-      { hour: 1, waktu: startTime, suhu: '28.5', tekanan: '756.2', laju: '12.0', kelembaban: '70', kecepatan_angin: '1.2', arah_angin: 'Timur', cuaca: 'Cerah' },
-      { hour: 6, waktu: `${String((h + 5) % 24).padStart(2, '0')}:${mStr}`, suhu: '33.5', tekanan: '753.0', laju: '12.0', kelembaban: '52', kecepatan_angin: '2.4', arah_angin: 'Timur Laut', cuaca: 'Cerah Berawan' },
-      { hour: 11, waktu: `${String((h + 10) % 24).padStart(2, '0')}:${mStr}`, suhu: '28.0', tekanan: '755.8', laju: '12.0', kelembaban: '74', kecepatan_angin: '1.5', arah_angin: 'Timur', cuaca: 'Berawan' },
-      { hour: 20, waktu: `${String((h + 19) % 24).padStart(2, '0')}:${mStr}`, suhu: '24.2', tekanan: '758.2', laju: '12.0', kelembaban: '88', kecepatan_angin: '0.8', arah_angin: 'Tenggara', cuaca: 'Berawan' }
+      { hour: 1, waktu: startTime, suhu: '28.5', tekanan: '756.2', laju: '1000', kelembaban: '70', kecepatan_angin: '1.2', arah_angin: 'Timur', cuaca: 'Cerah' },
+      { hour: 6, waktu: `${String((h + 5) % 24).padStart(2, '0')}:${mStr}`, suhu: '33.5', tekanan: '753.0', laju: '1000', kelembaban: '52', kecepatan_angin: '2.4', arah_angin: 'Timur Laut', cuaca: 'Cerah Berawan' },
+      { hour: 11, waktu: `${String((h + 10) % 24).padStart(2, '0')}:${mStr}`, suhu: '28.0', tekanan: '755.8', laju: '1000', kelembaban: '74', kecepatan_angin: '1.5', arah_angin: 'Timur', cuaca: 'Berawan' },
+      { hour: 20, waktu: `${String((h + 19) % 24).padStart(2, '0')}:${mStr}`, suhu: '24.2', tekanan: '758.2', laju: '1000', kelembaban: '88', kecepatan_angin: '0.8', arah_angin: 'Tenggara', cuaca: 'Berawan' }
     ];
     sortAnchors();
     showToast('✓ Preset acuan tipikal berhasil dimuat');
@@ -453,7 +476,7 @@
       waktu: calcTime,
       suhu: '',
       tekanan: '',
-      laju: '12.0',
+      laju: '1000',
       kelembaban: '',
       kecepatan_angin: '',
       arah_angin: 'Timur',
@@ -470,64 +493,106 @@
 
   // Pure mathematical diurnal interpolator (guarantees zero crashes & smooth physics curves)
   function localDiurnalFallback(startTime = '08:00', anchors = [], options = {}) {
-    const [startH, startM] = startTime.split(':').map(Number);
+    const [startH, startM] = (startTime || '08:00').split(':').map(Number);
     const rows = [];
+    
+    // Only accept anchors that have actual measurements
+    const validAnchors = (anchors || []).filter(a => a && a.hour >= 1 && a.hour <= 24 && hasMeasurement(a));
     const anchorMap = {};
-    (anchors || []).forEach(a => {
-      if (a && a.hour >= 1 && a.hour <= 24) anchorMap[a.hour] = a;
-    });
+    validAnchors.forEach(a => { anchorMap[a.hour] = a; });
 
-    let baseTemp = parseFloat(options.startTemp) || 28.5;
+    let baseTemp = parseFloat(options.startTemp);
     let baseTekanan = 756.0;
     let baseLaju = '12.0';
     let baseWindDir = options.dominantWind || 'Timur';
+    let baseCuaca = 'cerah';
 
-    if (anchors && anchors.length > 0) {
-      const first = anchors[0];
-      if (first.suhu) baseTemp = parseFloat(first.suhu) || baseTemp;
-      if (first.tekanan) baseTekanan = parseFloat(first.tekanan) || baseTekanan;
-      if (first.laju) baseLaju = String(first.laju);
+    if (validAnchors.length > 0) {
+      const first = validAnchors[0];
+      if (first.suhu && !isNaN(parseFloat(first.suhu))) baseTemp = parseFloat(first.suhu);
+      if (first.tekanan && !isNaN(parseFloat(first.tekanan))) baseTekanan = parseFloat(first.tekanan);
+      if (first.laju && String(first.laju).trim()) baseLaju = String(first.laju).trim();
       if (first.arah_angin) baseWindDir = first.arah_angin;
+      if (first.cuaca) baseCuaca = first.cuaca;
     }
+    if (isNaN(baseTemp)) baseTemp = 29.5;
+
+    const anchor1HourOfDay = startH % 24;
+    const tempAmplitude = 8.5;
 
     for (let h = 1; h <= 24; h++) {
       const curH = (startH + (h - 1)) % 24;
-      const timeStr = String(curH).padStart(2, '0') + ':' + String(startM || 0).padStart(2, '0');
+      const curM = startM || 0;
+      const timeStr = String(curH).padStart(2, '0') + ':' + String(curM).padStart(2, '0');
 
       if (anchorMap[h]) {
         const a = anchorMap[h];
         rows.push({
           hour: h,
           waktu: a.waktu || timeStr,
-          tekanan: String(a.tekanan || baseTekanan),
-          suhu: String(a.suhu || baseTemp),
-          laju: String(a.laju || baseLaju),
-          kelembaban: String(a.kelembaban || '65'),
-          kecepatan_angin: String(a.kecepatan_angin || '1.2'),
+          tekanan: a.tekanan || String(baseTekanan),
+          suhu: a.suhu || String(baseTemp),
+          laju: a.laju || baseLaju,
+          kelembaban: a.kelembaban || '65',
+          kecepatan_angin: a.kecepatan_angin || '1.5',
           arah_angin: a.arah_angin || baseWindDir,
-          cuaca: a.cuaca || (curH >= 6 && curH <= 17 ? 'Cerah Berawan' : 'Berawan'),
+          cuaca: a.cuaca || baseCuaca,
           isAnchor: true
         });
       } else {
-        const solarPhase = ((curH - 4 + 24) % 24) / 24 * 2 * Math.PI;
-        const diurnalFactor = 0.5 - 0.5 * Math.cos(solarPhase);
+        const hourDiffFromCoolest = (curH - 4 + 24) % 24;
+        const diurnalFactor = 0.5 - 0.5 * Math.cos((hourDiffFromCoolest / 24) * 2 * Math.PI);
 
-        const tempVal = (24.0 + diurnalFactor * 9.5).toFixed(1);
-        const pressVal = (758.0 - diurnalFactor * 4.8).toFixed(1);
-        const rhVal = Math.round(90 - diurnalFactor * 38);
-        const windSpd = (0.6 + diurnalFactor * 1.8).toFixed(1);
-        const cuacaVal = curH >= 6 && curH <= 17 ? (diurnalFactor > 0.6 ? 'Cerah' : 'Cerah Berawan') : 'Berawan';
+        const anchorFactor = (0.5 - 0.5 * Math.cos(((anchor1HourOfDay - 4 + 24) % 24 / 24) * 2 * Math.PI)) || 1;
+        const tempDiff = (diurnalFactor - anchorFactor) * tempAmplitude;
+        const tempVal = (baseTemp + tempDiff).toFixed(1);
+
+        const pressOffset = ((1 - diurnalFactor) * 3.5 - 1.8).toFixed(1);
+        const pressVal = (baseTekanan + parseFloat(pressOffset)).toFixed(1);
+
+        let baseRh = 65;
+        if (validAnchors.length > 0 && validAnchors[0].kelembaban) {
+          baseRh = parseFloat(validAnchors[0].kelembaban) || 65;
+        }
+        const rhDiff = (anchorFactor - diurnalFactor) * 32;
+        const rhVal = Math.min(95, Math.max(45, Math.round(baseRh + rhDiff)));
+
+        let baseWindSpeed = 1.8;
+        if (validAnchors.length > 0 && validAnchors[0].kecepatan_angin) {
+          baseWindSpeed = parseFloat(validAnchors[0].kecepatan_angin) || 1.8;
+        }
+        const windFactor = 0.5 + 0.5 * diurnalFactor;
+        const windSpd = (baseWindSpeed * (0.6 + 0.5 * windFactor)).toFixed(1);
+
+        let weatherStr = baseCuaca;
+        if (curH >= 6 && curH <= 17) {
+          weatherStr = diurnalFactor > 0.6 ? (baseCuaca || 'cerah') : 'cerah berawan';
+        } else {
+          weatherStr = 'berawan';
+        }
+
+        let rowLaju = baseLaju;
+        const numLaju = parseFloat(baseLaju);
+        if (!isNaN(numLaju)) {
+          if (numLaju >= 500) {
+            const dev = (Math.sin(h * 1.7) * 3).toFixed(0);
+            rowLaju = String(numLaju + parseInt(dev, 10));
+          } else {
+            const dev = (Math.sin(h * 1.7) * 0.04).toFixed(2);
+            rowLaju = (numLaju + parseFloat(dev)).toFixed(2);
+          }
+        }
 
         rows.push({
           hour: h,
           waktu: timeStr,
           tekanan: pressVal,
           suhu: tempVal,
-          laju: baseLaju,
+          laju: rowLaju,
           kelembaban: String(rhVal),
           kecepatan_angin: windSpd,
           arah_angin: baseWindDir,
-          cuaca: cuacaVal,
+          cuaca: weatherStr,
           isAnchor: false
         });
       }
@@ -757,11 +822,29 @@
   }
 
   // Direct 24-Hour Diurnal Projection with Real-Field Anchor Points
+  // Helper to sanitize numeric values and strip duplicate units
+  function cleanVal(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/°c|%|m\/s|mmhg/gi, '').trim();
+  }
+
+  // Direct 24-Hour Diurnal Projection with Real-Field Anchor Points
   async function directProject24h(apiKey, body) {
     const { startTime = '08:00', startTemp, dominantWind = 'Timur', location = 'Indonesia', anchorPoints = [] } = body;
     
-    // Filter valid anchor points (hour 1..24)
-    const validAnchors = (anchorPoints || []).filter(a => a && a.hour >= 1 && a.hour <= 24);
+    // Only accept anchors that have actual physical measurements
+    const validAnchors = (anchorPoints || []).filter(a => a && a.hour >= 1 && a.hour <= 24 && hasMeasurement(a));
+    const anchorMap = {};
+    validAnchors.forEach(a => { anchorMap[Number(a.hour)] = a; });
+
+    // Always compute baseline mathematical diurnal fallback to guarantee 0% empty cells
+    const baselineRows = localDiurnalFallback(startTime, validAnchors, { startTemp, dominantWind });
+
+    // Determine baseline flow rate scale from anchors (e.g. 1000 HVAS or 12.0)
+    let baseLajuStr = '12.0';
+    if (validAnchors.length > 0 && validAnchors[0].laju) {
+      baseLajuStr = String(validAnchors[0].laju).trim();
+    }
 
     let anchorPromptSection = '';
     if (validAnchors.length > 0) {
@@ -770,10 +853,11 @@ DATA RIIL LAPANGAN YANG SUDAH DICATAT PETUGAS (GROUND TRUTH):
 ${JSON.stringify(validAnchors, null, 2)}
 
 ATURAN UTAMA:
-1. Jam-jam acuan di atas (Jam ${validAnchors.map(a => a.hour).join(', ')}) WAJIB 100% PERSIS DAN TIDAK BOLEH DIUBAH! Tandai "isAnchor": true pada jam ini.
-2. Jam-jam kosong sebelum, di antara, dan sesudah titik acuan WAJIB diinterpolasikan secara mulus dan ilmiah (diurnal meteorologi).
-3. Laju alir (L/menit) pada jam-jam kosong stabil di sekitar angka alat yang tercatat pada titik acuan.
-4. Tekanan udara dan kelembaban membentuk fluktuasi pasang surut alami yang bersambung dengan data riil.`;
+1. Jam acuan di atas (Jam ${validAnchors.map(a => a.hour).join(', ')}) WAJIB 100% PERSIS DAN TIDAK BOLEH DIUBAH! Tandai "isAnchor": true HANYA pada jam ini.
+2. Jam-jam kosong (jam lainnya) WAJIB DILENGKAPI SELURUH KOLOMNYA (waktu, tekanan, suhu, laju, kelembaban, kecepatan_angin, arah_angin, cuaca).
+   DILARANG KERAS MENGOSONGKAN ATAU MEMBERI TANDA STRIP (-) PADA KOLOM MANAPUN! Tandai "isAnchor": false.
+3. Laju alir (L/menit) pada seluruh jam wajib berada di kisaran angka alat sampel (${baseLajuStr}).
+4. Suhu udara, tekanan atmosfer, dan kelembaban membentuk kurva diurnal alami yang menyambung mulus dengan data riil.`;
     }
 
     const systemPrompt = `Anda adalah pakar meteorologi dan pengukuran kualitas udara ambien lingkungan (Standar SNI & FSOP-10.3.3).
@@ -784,21 +868,25 @@ Pola diurnal fisika atmosfer yang WAJIB ditaati:
 2. Suhu Udara (°C): Siang (11:00-14:00) puncak (31-34.5°C), sore menurun (29-27°C), malam sejuk stabil (26-25°C), subuh (03:00-05:00) terendah (23.5-25°C), pagi naik (26-29.5°C).
 3. Kelembaban (%RH): Korelasi terbalik dengan suhu. Siang (50-68%), malam & subuh (80-93%).
 4. Tekanan (mmHg): Pasang surut semidiurnal atmosfer (752-759 mmHg).
-5. Laju Alir (L/menit): Stabil sesuai alat sampling.
+5. Laju Alir (L/menit): Stabil sesuai alat sampling (${baseLajuStr}).
 6. Kecepatan Angin (m/s): Siang lebih aktif (1.2-3.2 m/s), malam tenang (0.4-1.5 m/s).
 7. Arah Angin: Konsisten dengan arah dominan (${dominantWind}).
 8. Cuaca: Alami (Cerah, Cerah Berawan, Berawan).
 ${anchorPromptSection}
+
+PENTING:
+- Setiap baris dari jam 1 sampai jam 24 HARUS terisi lengkap semua kolomnya.
+- Jangan ada nilai kosong, null, atau strip (-).
 
 Output WAJIB JSON persis:
 {
   "rows": [
     {
       "hour": 1,
-      "waktu": "08:00",
+      "waktu": "${startTime}",
       "tekanan": "756.2",
       "suhu": "29.4",
-      "laju": "12.0",
+      "laju": "${baseLajuStr}",
       "kelembaban": "68",
       "kecepatan_angin": "1.5",
       "arah_angin": "${dominantWind}",
@@ -812,38 +900,69 @@ Output WAJIB JSON persis:
     const prompt = `Lengkapi proyeksi 24 jam lengkap dari jam 1 sampai jam 24.
 Waktu mulai: ${startTime}, Suhu awal/referensi: ${startTemp || 'otomatis'}, Arah dominan: ${dominantWind}.
 ${validAnchors.length > 0 ? `Kunci data riil jam [${validAnchors.map(a => a.hour).join(', ')}] persis apa adanya.` : ''}
+Pastikan seluruh 24 jam memiliki data lengkap untuk semua kolom (waktu, tekanan, suhu, laju, kelembaban, kecepatan_angin, arah_angin, cuaca).
 Kembalikan tepat 24 baris data dalam format JSON.`;
 
+    let data = null;
     try {
       const txt = await directCallGemini(apiKey, systemPrompt, prompt, { jsonMode: true, temperature: 0.2 });
-      let data = null;
       try {
         data = JSON.parse(txt);
       } catch (e) {
         const match = txt.match(/\{[\s\S]*\}/);
         if (match) data = JSON.parse(match[0]);
       }
-      if (data && Array.isArray(data.rows) && data.rows.length >= 24) {
-        // Enforce hard lock on anchors
-        validAnchors.forEach(a => {
-          const idx = data.rows.findIndex(r => Number(r.hour) === Number(a.hour));
-          if (idx !== -1) {
-            data.rows[idx] = {
-              ...data.rows[idx],
-              ...a,
-              isAnchor: true
-            };
-          }
-        });
-        return data;
-      }
     } catch (err) {
       console.warn('Gemini 24h projection error, using local diurnal interpolator fallback:', err);
     }
 
-    return {
-      rows: localDiurnalFallback(startTime, validAnchors, { startTemp, dominantWind })
-    };
+    // Merge & sanitize: guarantee all 24 hours are 100% complete without empty cells
+    const mergedRows = [];
+    for (let h = 1; h <= 24; h++) {
+      const fallbackR = baselineRows[h - 1] || {};
+      const geminiR = Array.isArray(data?.rows)
+        ? data.rows.find(r => Number(r.hour) === h) || data.rows[h - 1]
+        : null;
+      const anchor = anchorMap[h];
+
+      const pickVal = (anchorVal, geminiVal, fallbackVal) => {
+        const cA = cleanVal(anchorVal);
+        if (cA && cA !== '-') return cA;
+        const cG = cleanVal(geminiVal);
+        if (cG && cG !== '-') return cG;
+        return cleanVal(fallbackVal) || '';
+      };
+
+      if (anchor) {
+        mergedRows.push({
+          hour: h,
+          waktu: pickVal(anchor.waktu, geminiR?.waktu, fallbackR.waktu),
+          tekanan: pickVal(anchor.tekanan, geminiR?.tekanan, fallbackR.tekanan),
+          suhu: pickVal(anchor.suhu, geminiR?.suhu, fallbackR.suhu),
+          laju: pickVal(anchor.laju, geminiR?.laju, fallbackR.laju),
+          kelembaban: pickVal(anchor.kelembaban, geminiR?.kelembaban, fallbackR.kelembaban),
+          kecepatan_angin: pickVal(anchor.kecepatan_angin, geminiR?.kecepatan_angin, fallbackR.kecepatan_angin),
+          arah_angin: pickVal(anchor.arah_angin, geminiR?.arah_angin, fallbackR.arah_angin),
+          cuaca: pickVal(anchor.cuaca, geminiR?.cuaca, fallbackR.cuaca),
+          isAnchor: true
+        });
+      } else {
+        mergedRows.push({
+          hour: h,
+          waktu: pickVal('', geminiR?.waktu, fallbackR.waktu),
+          tekanan: pickVal('', geminiR?.tekanan, fallbackR.tekanan),
+          suhu: pickVal('', geminiR?.suhu, fallbackR.suhu),
+          laju: pickVal('', geminiR?.laju, fallbackR.laju),
+          kelembaban: pickVal('', geminiR?.kelembaban, fallbackR.kelembaban),
+          kecepatan_angin: pickVal('', geminiR?.kecepatan_angin, fallbackR.kecepatan_angin),
+          arah_angin: pickVal('', geminiR?.arah_angin, fallbackR.arah_angin),
+          cuaca: pickVal('', geminiR?.cuaca, fallbackR.cuaca),
+          isAnchor: false
+        });
+      }
+    }
+
+    return { rows: mergedRows };
   }
 
   // Direct Smart Form Completion
@@ -1026,8 +1145,8 @@ Jika diminta memperbarui data form, cantumkan blok:
         fields.forEach(f => {
           if (!f.val) return;
           const currentVal = getField(f.name);
-          if (protectReal && currentVal) {
-            // Field already has data and protection is on: KEEP AS IS!
+          if (protectReal && r.isAnchor && currentVal) {
+            // Real anchor field: keep as is!
             protectedCount++;
           } else {
             if (setField(f.name, f.val)) filledCount++;
