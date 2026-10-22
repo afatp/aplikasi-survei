@@ -61,6 +61,7 @@
       <div class="zoom-bar-row1">
         <button type="button" class="zoom-btn-back" id="mobileZoomBackToEasy">✎ Isi lewat HP</button>
         <button type="button" class="zoom-btn-save" id="mobileZoomSave" title="Simpan data survei">💾 Simpan</button>
+        <button type="button" class="zoom-btn-reset-form" id="mobileZoomResetForm" title="Kosongkan seluruh isian formulir project ini">🗑️ Kosongkan</button>
         <button type="button" class="zoom-btn-pen is-off" id="mobileTogglePen" title="Aktifkan / Nonaktifkan Pen (Mencegah layar tercoret saat digeser)">🖐️ Pen: OFF</button>
         <button type="button" class="cloud-sync-badge" onclick="window.CloudSync?.openModal()" title="Sinkronisasi Google Drive" style="padding:3px 8px;font-size:11px;">
           <span class="cloud-pulse-dot"></span><span>☁️ Drive</span>
@@ -88,6 +89,7 @@
           <span class="cloud-pulse-dot"></span><span>☁️ Drive Sync</span>
         </button>
         ${!isAir ? '<button type="button" id="mobileSync">Sinkronkan</button>' : ''}
+        <button type="button" id="mobileReset" class="is-danger" title="Kosongkan seluruh isian formulir project ini">🗑️ Kosongkan form</button>
       </div>
       <div id="mobileFields"></div>
       <p class="mobile-footer-help">Isian langsung terhubung ke formulir resmi dan tersimpan otomatis pada perangkat ini. Gunakan Ekspor JSON untuk cadangan.</p>
@@ -256,7 +258,8 @@
     let dragged = false;
 
     el.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // Only drag-scroll with left mouse click on desktop; touch screens use native touch scroll
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
       isDown = true;
       dragged = false;
       startX = e.clientX;
@@ -266,7 +269,7 @@
     window.addEventListener('pointermove', (e) => {
       if (!isDown) return;
       const dx = e.clientX - startX;
-      if (Math.abs(dx) > 4) {
+      if (Math.abs(dx) > 8) {
         dragged = true;
         el.scrollLeft = scrollLeft - dx;
       }
@@ -292,10 +295,9 @@
   for(let i=0;i<labels.length;i++){const b=makeNode('button','',(i+1)+'. '+labels[i]);b.type='button';b.addEventListener('click',()=>{renderPage(i+1);if(document.body.classList.contains('mobile-preview-on'))sheets[i].scrollIntoView({behavior:'instant',block:'start'});else window.scrollTo({top:110,behavior:'instant'});});nav.append(b);}
   setTimeout(updateNavArrows, 100);
 
-  // Enable drag scroll on all swipeable strips
+  // Enable drag scroll for mouse on swipeable strips (not on toolbar action buttons)
   enableDragScroll(nav);
   enableDragScroll(document.getElementById('projectTabBar'));
-  enableDragScroll(document.querySelector('.toolbar-main-actions'));
   enableDragScroll(document.getElementById('mobileZoomPageTabs'));
   /* Paper Form Zoom & Scale Engine for Mobile */
   let currentZoom = 1.0;
@@ -511,6 +513,57 @@
   document.getElementById('mobileSave').addEventListener('click',()=>{window.saveData?.();showToast('Data disimpan pada perangkat ini')});
   document.getElementById('mobilePrint').addEventListener('click',()=>{window.saveData?.();window.print()});
   document.getElementById('mobileSync')?.addEventListener('click',()=>window.openSyncModal?.());
+
+  function handleFormReset() {
+    if (typeof window.resetForm === 'function') {
+      window.resetForm();
+    } else {
+      if (!confirm('Kosongkan seluruh isian, sketsa, dan tanda tangan untuk project ini?')) return;
+      window.clearFormForNewProject?.();
+      window.saveAllProjects?.();
+      window.setStatus?.('Form dikosongkan');
+    }
+    updateMirrors();
+    refreshProgress();
+    ownHistory.sketch = [];
+    ownHistory.signature = [];
+    showToast('Form telah dikosongkan');
+  }
+  document.getElementById('mobileReset')?.addEventListener('click', handleFormReset);
+  document.getElementById('mobileZoomResetForm')?.addEventListener('click', handleFormReset);
+  window.updateMobileMirrors = function () {
+    updateMirrors();
+    refreshProgress();
+    ownHistory.sketch = [];
+    ownHistory.signature = [];
+  };
+
+  // Setup mobile backdrop & toggle listener for 3-dots actions menu
+  const moreMenu = document.getElementById('moreActionsMenu');
+  if (moreMenu) {
+    let backdrop = document.getElementById('mobileMenuBackdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'mobileMenuBackdrop';
+      backdrop.className = 'mobile-menu-backdrop';
+      document.body.appendChild(backdrop);
+    }
+    const syncMenuState = () => {
+      const isOpen = moreMenu.hasAttribute('open');
+      backdrop.classList.toggle('is-active', isOpen);
+    };
+    moreMenu.addEventListener('toggle', syncMenuState);
+    backdrop.addEventListener('click', () => {
+      moreMenu.open = false;
+      syncMenuState();
+    });
+    backdrop.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      moreMenu.open = false;
+      syncMenuState();
+    });
+  }
+
   document.getElementById('mobileHome').addEventListener('click',()=>{window.saveData?.();location.href='index.html';});
   document.getElementById('mobileNext').addEventListener('click',()=>{if(currentPage===labels.length){window.saveData?.();window.print();}else{renderPage(currentPage+1);window.scrollTo({top:110,behavior:'instant'});}});
   root.addEventListener('input',(e)=>updateOrig(e));root.addEventListener('change',(e)=>updateOrig(e));
