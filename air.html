@@ -3109,11 +3109,10 @@
             let left = Math.round(activeDrag.startLeft + dx);
             let top = Math.round(activeDrag.startTop + dy);
 
-            const maxLeft = container.clientWidth - activeDrag.elem.offsetWidth;
-            const maxTop = container.clientHeight - activeDrag.elem.offsetHeight;
-
-            left = Math.max(-20, Math.min(left, maxLeft + 20));
-            top = Math.max(-20, Math.min(top, maxTop + 20));
+            // Allow dragging freely — keep at least 30px of element visible inside container
+            const minVisible = 30;
+            left = Math.max(-(activeDrag.elem.offsetWidth - minVisible), Math.min(left, container.clientWidth - minVisible));
+            top = Math.max(-(activeDrag.elem.offsetHeight - minVisible), Math.min(top, container.clientHeight - minVisible));
 
             activeDrag.elem.style.left = left + 'px';
             activeDrag.elem.style.top = top + 'px';
