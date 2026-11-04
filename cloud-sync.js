@@ -31,6 +31,19 @@ function doPost(e) {
     const rawData = e.postData.contents;
     const payload = JSON.parse(rawData);
     const folder = getOrCreateFolder();
+
+    // ----- DELETE ACTION -----
+    if (payload.action === 'delete' && payload.fileId) {
+      try {
+        const file = DriveApp.getFileById(payload.fileId);
+        file.setTrashed(true);
+        return jsonResponse({ status: 'success', message: 'File dihapus' });
+      } catch (e) {
+        return jsonResponse({ status: 'error', message: 'File tidak ditemukan atau tidak dapat dihapus' });
+      }
+    }
+
+    // ----- SAVE ACTION -----
     const formType = payload.type || 'survei';
     const project = payload.project;
     if (!project || !project.id) return jsonResponse({ status: 'error', message: 'Data proyek tidak lengkap' });
@@ -363,6 +376,289 @@ function jsonResponse(data) {
     return { count: mergedCount, totalInDrive: res.projects.length };
   }
 
+  // -----------------------------------------------------------------
+  //  NEW: List semua proyek yang ada di Drive
+  // -----------------------------------------------------------------
+  async function listRemoteProjects() {
+    const url = getUrl();
+    if (!url) throw new Error('URL Google Apps Script belum diatur');
+    if (!navigator.onLine) throw new Error('Perangkat sedang offline');
+    showToast('⏳ Mengambil daftar proyek dari Drive...', 'warning', 6000);
+    const res = await fetchFromDrive(url);
+    if (!res || res.status !== 'success' || !Array.isArray(res.projects))
+      throw new Error(res?.message || 'Gagal mendapatkan daftar proyek dari Drive');
+    return res.projects;
+  }
+
+  // -----------------------------------------------------------------
+  //  NEW: Hapus proyek dari Drive (menggunakan fileId)
+  // -----------------------------------------------------------------
+  async function deleteRemoteProject(fileId) {
+    const url = getUrl();
+    if (!url) throw new Error('URL Google Apps Script belum diatur');
+    if (!navigator.onLine) throw new Error('Perangkat sedang offline');
+    const payload = { action: 'delete', fileId: fileId };
+    const res = await sendToDrive(url, payload);
+    if (!res || res.status !== 'success')
+      throw new Error(res?.message || 'Gagal menghapus proyek dari Drive');
+    showToast('🗑️ Proyek berhasil dihapus dari Google Drive', 'success');
+    return res;
+  }
+
+  // -----------------------------------------------------------------
+  //  NEW: Tarik satu proyek berdasarkan projectId dengan cek duplikat
+  // -----------------------------------------------------------------
+  async function pullProject(projectId, formType) {
+    const url = getUrl();
+    if (!url) throw new Error('URL Google Apps Script belum diatur');
+    if (!navigator.onLine) throw new Error('Perangkat sedang offline');
+
+    showToast('⏳ Mengambil proyek dari Drive...', 'warning', 6000);
+    const res = await fetchFromDrive(url);
+    if (!res || res.status !== 'success' || !Array.isArray(res.projects))
+      throw new Error(res?.message || 'Gagal mengambil data dari Drive');
+
+    const target = res.projects.find(p => p.data && p.data.id === projectId);
+    if (!target) throw new Error('Proyek tidak ditemukan di Drive');
+
+    const ft = formType || currentType;
+    const storageKey = ft === 'air'
+      ? 'survey_air_fsop_10_3_1_projects_v1'
+      : 'survey_udara_ambien_projects_v1';
+
+    let local = { activeProjectId: null, projects: [] };
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) local = JSON.parse(raw);
+      if (!local.projects) local.projects = [];
+    } catch (_) {
+      local = { activeProjectId: null, projects: [] };
+    }
+
+    const existingIdx = local.projects.findIndex(p => p.id === target.data.id);
+    if (existingIdx >= 0) {
+      if (!confirm('Proyek "' + (target.data.name || target.data.id) + '" sudah ada secara lokal. Timpa data lokal dengan data dari Drive?')) {
+        showToast('⚠️ Penarikan dibatalkan, data lokal tetap aman', 'warning');
+        return { status: 'skipped' };
+      }
+      local.projects[existingIdx] = target.data;
+    } else {
+      local.projects.push(target.data);
+    }
+
+    if (!local.activeProjectId) local.activeProjectId = target.data.id;
+    localStorage.setItem(storageKey, JSON.stringify(local));
+    localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+    showToast('📥 Proyek "' + (target.data.name || target.data.id) + '" berhasil ditarik dari Drive!', 'success');
+    return { status: 'ok' };
+  }
+
+  // -----------------------------------------------------------------
+  //  NEW: Hapus proyek dari lokal
+  // -----------------------------------------------------------------
+  function deleteLocalProject(projectId, formType) {
+    const ft = formType || currentType;
+    const storageKey = ft === 'air'
+      ? 'survey_air_fsop_10_3_1_projects_v1'
+      : 'survey_udara_ambien_projects_v1';
+
+    let local = { activeProjectId: null, projects: [] };
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) local = JSON.parse(raw);
+      if (!local.projects) local.projects = [];
+    } catch (_) {
+      local = { activeProjectId: null, projects: [] };
+    }
+
+    local.projects = local.projects.filter(p => p.id !== projectId);
+    if (local.activeProjectId === projectId) {
+      local.activeProjectId = local.projects.length > 0 ? local.projects[0].id : null;
+    }
+    localStorage.setItem(storageKey, JSON.stringify(local));
+  }
+
+  // -----------------------------------------------------------------
+  //  NEW: Buka modal daftar proyek Google Drive
+  // -----------------------------------------------------------------
+  function openProjectModal() {
+    // Buat modal jika belum ada
+    let modalEl = document.getElementById('driveProjectModal');
+    if (!modalEl) {
+      modalEl = document.createElement('div');
+      modalEl.id = 'driveProjectModal';
+      modalEl.className = 'cloud-modal-overlay';
+      modalEl.innerHTML = `
+        <div class="cloud-modal-card" role="dialog" aria-modal="true" style="max-width:720px;width:95%;max-height:85vh;overflow-y:auto;">
+          <div class="cloud-modal-header">
+            <h3>📂 Daftar Proyek di Google Drive</h3>
+            <button type="button" class="cloud-modal-close" id="driveProjectModalCloseBtn" title="Tutup">&times;</button>
+          </div>
+          <div class="cloud-modal-body">
+            <div id="driveProjectStatusBanner" class="cloud-status-banner is-online" style="margin-bottom:12px;"></div>
+
+            <div class="cloud-section-box" style="margin-bottom:12px;">
+              <div class="cloud-section-title">🔍 Filter Proyek</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                <select id="driveProjectFilterType" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+                  <option value="all">Semua Tipe</option>
+                  <option value="air">Form Air</option>
+                  <option value="udara">Form Udara</option>
+                </select>
+                <input type="text" id="driveProjectFilterName" placeholder="Cari nama proyek..." 
+                  style="flex:1;min-width:150px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;" />
+                <button type="button" class="cloud-btn cloud-btn-outline" id="driveProjectRefreshBtn">🔄 Refresh</button>
+              </div>
+            </div>
+
+            <div id="driveProjectListContainer" style="min-height:100px;">
+              <div style="text-align:center;padding:30px;color:#94a3b8;">Memuat daftar proyek...</div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalEl);
+
+      // Event: Tutup modal
+      modalEl.querySelector('#driveProjectModalCloseBtn').addEventListener('click', closeProjectModal);
+      modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) closeProjectModal();
+      });
+
+      // Event: Filter
+      modalEl.querySelector('#driveProjectFilterType').addEventListener('change', () => renderProjectList());
+      modalEl.querySelector('#driveProjectFilterName').addEventListener('input', () => renderProjectList());
+      modalEl.querySelector('#driveProjectRefreshBtn').addEventListener('click', () => loadProjectList());
+    }
+
+    // Tampilkan modal
+    modalEl.classList.add('is-active');
+    document.body.style.overflow = 'hidden';
+
+    // Set default filter sesuai currentType
+    const filterType = modalEl.querySelector('#driveProjectFilterType');
+    if (filterType && (currentType === 'air' || currentType === 'udara')) {
+      filterType.value = currentType;
+    }
+
+    // Muat daftar proyek
+    loadProjectList();
+  }
+
+  let _cachedRemoteProjects = [];
+
+  async function loadProjectList() {
+    const container = document.getElementById('driveProjectListContainer');
+    if (!container) return;
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:#64748b;">⏳ Mengambil data dari Google Drive...</div>';
+
+    try {
+      _cachedRemoteProjects = await listRemoteProjects();
+      renderProjectList();
+    } catch (err) {
+      container.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444;">❌ ' + err.message + '</div>';
+    }
+  }
+
+  function renderProjectList() {
+    const container = document.getElementById('driveProjectListContainer');
+    if (!container) return;
+
+    const filterType = (document.getElementById('driveProjectFilterType')?.value || 'all').toLowerCase();
+    const filterName = (document.getElementById('driveProjectFilterName')?.value || '').toLowerCase().trim();
+
+    let filtered = _cachedRemoteProjects;
+
+    // Filter berdasarkan tipe form
+    if (filterType !== 'all') {
+      filtered = filtered.filter(p => {
+        const fn = (p.fileName || '').toLowerCase();
+        return fn.startsWith(filterType + '_');
+      });
+    }
+
+    // Filter berdasarkan nama
+    if (filterName) {
+      filtered = filtered.filter(p => {
+        const name = (p.data?.name || p.fileName || '').toLowerCase();
+        const id = (p.data?.id || '').toLowerCase();
+        return name.includes(filterName) || id.includes(filterName);
+      });
+    }
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;">Tidak ada proyek yang ditemukan di Google Drive.</div>';
+      return;
+    }
+
+    // Bangun tabel
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;">';
+    html += '<th style="text-align:left;padding:8px 6px;">Nama Proyek</th>';
+    html += '<th style="text-align:left;padding:8px 6px;">Tipe</th>';
+    html += '<th style="text-align:left;padding:8px 6px;">Terakhir Diubah</th>';
+    html += '<th style="text-align:center;padding:8px 6px;">Aksi</th>';
+    html += '</tr></thead><tbody>';
+
+    filtered.forEach((p, idx) => {
+      const projName = p.data?.name || p.data?.id || p.fileName || '-';
+      const fn = p.fileName || '';
+      const tipe = fn.startsWith('air_') ? '💧 Air' : fn.startsWith('udara_') ? '🌫️ Udara' : '📄 Lainnya';
+      const lastMod = p.lastModified ? new Date(p.lastModified).toLocaleString('id-ID') : '-';
+      const bgColor = idx % 2 === 0 ? '#fff' : '#f8fafc';
+      const projId = p.data?.id || '';
+      const fileId = p.fileId || '';
+
+      html += '<tr style="border-bottom:1px solid #e2e8f0;background:' + bgColor + ';">';
+      html += '<td style="padding:8px 6px;font-weight:600;">' + projName + '</td>';
+      html += '<td style="padding:8px 6px;">' + tipe + '</td>';
+      html += '<td style="padding:8px 6px;">' + lastMod + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center;white-space:nowrap;">';
+      html += '<button class="cloud-btn cloud-btn-outline" style="font-size:11px;padding:4px 8px;margin:2px;" onclick="window.CloudSync._handlePull(\'' + projId + '\',\'' + fn + '\')">📥 Tarik</button>';
+      html += '<button class="cloud-btn cloud-btn-outline" style="font-size:11px;padding:4px 8px;margin:2px;" onclick="window.CloudSync._handleDelete(\'' + fileId + '\',\'' + projName.replace(/'/g, "\\\\'") + '\')">🗑️ Hapus</button>';
+      html += '</td></tr>';
+    });
+
+    html += '</tbody></table>';
+    html += '<div style="margin-top:8px;font-size:11px;color:#94a3b8;">Total: ' + filtered.length + ' proyek ditemukan di Google Drive</div>';
+    container.innerHTML = html;
+  }
+
+  // Handler untuk tombol Tarik di modal
+  async function _handlePull(projectId, fileName) {
+    const ft = fileName.startsWith('air_') ? 'air' : fileName.startsWith('udara_') ? 'udara' : currentType;
+    try {
+      const result = await pullProject(projectId, ft);
+      if (result.status === 'ok') {
+        if (confirm('Proyek berhasil ditarik! Muat ulang halaman untuk menampilkan data terbaru?')) {
+          window.location.reload();
+        }
+      }
+    } catch (err) {
+      alert('Gagal menarik proyek: ' + err.message);
+    }
+  }
+
+  // Handler untuk tombol Hapus di modal
+  async function _handleDelete(fileId, projName) {
+    if (!confirm('Hapus proyek "' + projName + '" dari Google Drive?\n\nData lokal di perangkat ini TIDAK akan dihapus.')) return;
+    try {
+      await deleteRemoteProject(fileId);
+      // Refresh daftar
+      loadProjectList();
+    } catch (err) {
+      alert('Gagal menghapus: ' + err.message);
+    }
+  }
+
+  function closeProjectModal() {
+    const modalEl = document.getElementById('driveProjectModal');
+    if (modalEl) {
+      modalEl.classList.remove('is-active');
+      document.body.style.overflow = '';
+    }
+  }
+
   // --- Update Realtime Online/Offline Web Status Indicators ---
   function updateRealtimeWebStatus(customState) {
     const isOnline = navigator.onLine;
@@ -617,15 +913,9 @@ function jsonResponse(data) {
       }
     });
 
-    // Pull All
+    // Pull All — sekarang buka modal daftar proyek
     overlay.querySelector('#cloudPullAllBtn').addEventListener('click', async () => {
-      if (confirm('Tarik data dari Google Drive ke perangkat ini? Data survei di Drive akan dimasukkan ke daftar proyek Anda.')) {
-        try {
-          await pullAndMerge(currentType);
-        } catch (e) {
-          alert('Gagal menarik data: ' + e.message);
-        }
-      }
+      openProjectModal();
     });
 
     // Accordion Toggle
@@ -715,6 +1005,16 @@ function jsonResponse(data) {
     pushProject,
     flushQueue,
     pullAndMerge,
+    // NEW: Fungsi manajemen proyek Drive
+    listRemoteProjects,
+    deleteRemoteProject,
+    pullProject,
+    deleteLocalProject,
+    openProjectModal,
+    closeProjectModal,
+    // Internal handlers untuk tombol di modal
+    _handlePull,
+    _handleDelete,
     testConnection,
     openModal,
     closeModal,
