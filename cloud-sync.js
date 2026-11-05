@@ -33,13 +33,24 @@ function doPost(e) {
     const folder = getOrCreateFolder();
 
     // ----- DELETE ACTION -----
-    if (payload.action === 'delete' && payload.fileId) {
+    if (payload.action === 'delete') {
       try {
-        const file = DriveApp.getFileById(payload.fileId);
-        file.setTrashed(true);
-        return jsonResponse({ status: 'success', message: 'File dihapus' });
+        if (payload.fileId) {
+          const file = DriveApp.getFileById(payload.fileId);
+          file.setTrashed(true);
+          return jsonResponse({ status: 'success', message: 'File dihapus' });
+        } else if (payload.fileName) {
+          const files = folder.getFilesByName(payload.fileName);
+          let count = 0;
+          while (files.hasNext()) {
+            files.next().setTrashed(true);
+            count++;
+          }
+          return jsonResponse({ status: 'success', message: count > 0 ? 'File dihapus' : 'File tidak ditemukan' });
+        }
+        return jsonResponse({ status: 'error', message: 'fileId atau fileName tidak disertakan' });
       } catch (e) {
-        return jsonResponse({ status: 'error', message: 'File tidak ditemukan atau tidak dapat dihapus' });
+        return jsonResponse({ status: 'error', message: 'File tidak ditemukan atau tidak dapat dihapus: ' + e.toString() });
       }
     }
 
@@ -391,16 +402,21 @@ function jsonResponse(data) {
   }
 
   // -----------------------------------------------------------------
-  //  NEW: Hapus proyek dari Drive (menggunakan fileId)
+  //  NEW: Hapus proyek dari Drive (menggunakan fileId & fileName)
   // -----------------------------------------------------------------
-  async function deleteRemoteProject(fileId) {
+  async function deleteRemoteProject(fileId, fileName) {
     const url = getUrl();
     if (!url) throw new Error('URL Google Apps Script belum diatur');
     if (!navigator.onLine) throw new Error('Perangkat sedang offline');
-    const payload = { action: 'delete', fileId: fileId };
+    const payload = { action: 'delete', fileId: fileId, fileName: fileName };
     const res = await sendToDrive(url, payload);
-    if (!res || res.status !== 'success')
-      throw new Error(res?.message || 'Gagal menghapus proyek dari Drive');
+    if (!res || res.status !== 'success') {
+      const msg = res?.message || '';
+      if (msg.toLowerCase().includes('data proyek tidak lengkap')) {
+        throw new Error('Google Apps Script Anda masih versi lama (belum ada fitur delete). Silakan buka menu ☁️ Sinkron Google Drive > "Panduan & Salin Kode", salin skrip terbaru ke script.google.com, lalu klik Deploy > Manage Deployments > Edit > Version: New Version > Deploy.');
+      }
+      throw new Error(msg || 'Gagal menghapus proyek dari Drive');
+    }
     showToast('🗑️ Proyek berhasil dihapus dari Google Drive', 'success');
     return res;
   }
@@ -489,29 +505,29 @@ function jsonResponse(data) {
       modalEl.id = 'driveProjectModal';
       modalEl.className = 'cloud-modal-overlay';
       modalEl.innerHTML = `
-        <div class="cloud-modal-card" role="dialog" aria-modal="true" style="max-width:720px;width:95%;max-height:85vh;overflow-y:auto;">
-          <div class="cloud-modal-header">
+        <div class="cloud-modal-card" role="dialog" aria-modal="true" style="max-width:760px;width:95%;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.35);">
+          <div class="cloud-modal-header" style="flex-shrink:0;">
             <h3>📂 Daftar Proyek di Google Drive</h3>
             <button type="button" class="cloud-modal-close" id="driveProjectModalCloseBtn" title="Tutup">&times;</button>
           </div>
-          <div class="cloud-modal-body">
-            <div id="driveProjectStatusBanner" class="cloud-status-banner is-online" style="margin-bottom:12px;"></div>
+          <div class="cloud-modal-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px;gap:10px;">
+            <div id="driveProjectStatusBanner" class="cloud-status-banner is-online" style="margin-bottom:0;flex-shrink:0;"></div>
 
-            <div class="cloud-section-box" style="margin-bottom:12px;">
-              <div class="cloud-section-title">🔍 Filter Proyek</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-                <select id="driveProjectFilterType" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;">
+            <div class="cloud-section-box" style="margin-bottom:0;flex-shrink:0;padding:10px 14px;">
+              <div class="cloud-section-title" style="margin-bottom:6px;">🔍 Filter Proyek</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <select id="driveProjectFilterType" style="padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;background:#fff;">
                   <option value="all">Semua Tipe</option>
-                  <option value="air">Form Air</option>
-                  <option value="udara">Form Udara</option>
+                  <option value="air">💧 Form Air</option>
+                  <option value="udara">🌫️ Form Udara</option>
                 </select>
-                <input type="text" id="driveProjectFilterName" placeholder="Cari nama proyek..." 
-                  style="flex:1;min-width:150px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;" />
+                <input type="text" id="driveProjectFilterName" placeholder="Cari nama atau ID proyek..." 
+                  style="flex:1;min-width:160px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px;background:#fff;" />
                 <button type="button" class="cloud-btn cloud-btn-outline" id="driveProjectRefreshBtn">🔄 Refresh</button>
               </div>
             </div>
 
-            <div id="driveProjectListContainer" style="min-height:100px;">
+            <div id="driveProjectListContainer" style="flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:220px;max-height:55vh;border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:4px;">
               <div style="text-align:center;padding:30px;color:#94a3b8;">Memuat daftar proyek...</div>
             </div>
           </div>
@@ -525,14 +541,24 @@ function jsonResponse(data) {
         if (e.target === modalEl) closeProjectModal();
       });
 
+      // Mencegah scroll tembus ke lembar kerja saat user scroll di dalam modal
+      modalEl.addEventListener('wheel', (e) => {
+        const listEl = document.getElementById('driveProjectListContainer');
+        if (listEl && listEl.contains(e.target)) {
+          return; // Biarkan scroll pada daftar proyek
+        }
+        e.preventDefault();
+      }, { passive: false });
+
       // Event: Filter
       modalEl.querySelector('#driveProjectFilterType').addEventListener('change', () => renderProjectList());
       modalEl.querySelector('#driveProjectFilterName').addEventListener('input', () => renderProjectList());
       modalEl.querySelector('#driveProjectRefreshBtn').addEventListener('click', () => loadProjectList());
     }
 
-    // Tampilkan modal
+    // Tampilkan modal dan kunci scroll latar belakang
     modalEl.classList.add('is-active');
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
 
     // Set default filter sesuai currentType
@@ -591,13 +617,13 @@ function jsonResponse(data) {
       return;
     }
 
-    // Bangun tabel
+    // Bangun tabel dengan sticky header
     let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
-    html += '<thead><tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;">';
-    html += '<th style="text-align:left;padding:8px 6px;">Nama Proyek</th>';
-    html += '<th style="text-align:left;padding:8px 6px;">Tipe</th>';
-    html += '<th style="text-align:left;padding:8px 6px;">Terakhir Diubah</th>';
-    html += '<th style="text-align:center;padding:8px 6px;">Aksi</th>';
+    html += '<thead><tr style="position:sticky;top:0;z-index:2;background:#f1f5f9;border-bottom:2px solid #cbd5e1;box-shadow:0 1px 2px rgba(0,0,0,0.05);">';
+    html += '<th style="text-align:left;padding:9px 8px;">Nama Proyek</th>';
+    html += '<th style="text-align:left;padding:9px 8px;">Tipe</th>';
+    html += '<th style="text-align:left;padding:9px 8px;">Terakhir Diubah</th>';
+    html += '<th style="text-align:center;padding:9px 8px;min-width:130px;">Aksi</th>';
     html += '</tr></thead><tbody>';
 
     filtered.forEach((p, idx) => {
@@ -610,18 +636,28 @@ function jsonResponse(data) {
       const fileId = p.fileId || '';
 
       html += '<tr style="border-bottom:1px solid #e2e8f0;background:' + bgColor + ';">';
-      html += '<td style="padding:8px 6px;font-weight:600;">' + projName + '</td>';
-      html += '<td style="padding:8px 6px;">' + tipe + '</td>';
-      html += '<td style="padding:8px 6px;">' + lastMod + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;white-space:nowrap;">';
+      html += '<td style="padding:9px 8px;font-weight:600;">' + escapeHtml(projName) + '</td>';
+      html += '<td style="padding:9px 8px;">' + tipe + '</td>';
+      html += '<td style="padding:9px 8px;color:#64748b;font-size:12px;">' + lastMod + '</td>';
+      html += '<td style="padding:9px 8px;text-align:center;white-space:nowrap;">';
       html += '<button class="cloud-btn cloud-btn-outline" style="font-size:11px;padding:4px 8px;margin:2px;" onclick="window.CloudSync._handlePull(\'' + projId + '\',\'' + fn + '\')">📥 Tarik</button>';
-      html += '<button class="cloud-btn cloud-btn-outline" style="font-size:11px;padding:4px 8px;margin:2px;" onclick="window.CloudSync._handleDelete(\'' + fileId + '\',\'' + projName.replace(/'/g, "\\\\'") + '\')">🗑️ Hapus</button>';
+      html += '<button class="cloud-btn cloud-btn-outline" style="font-size:11px;padding:4px 8px;margin:2px;color:#dc2626;border-color:#fca5a5;" onclick="window.CloudSync._handleDelete(\'' + fileId + '\',\'' + projName.replace(/'/g, "\\\\'") + '\',\'' + fn + '\')">🗑️ Hapus</button>';
       html += '</td></tr>';
     });
 
     html += '</tbody></table>';
-    html += '<div style="margin-top:8px;font-size:11px;color:#94a3b8;">Total: ' + filtered.length + ' proyek ditemukan di Google Drive</div>';
+    html += '<div style="margin-top:8px;padding:4px 6px;font-size:11px;color:#94a3b8;">Total: ' + filtered.length + ' proyek ditemukan di Google Drive</div>';
     container.innerHTML = html;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   // Handler untuk tombol Tarik di modal
@@ -640,14 +676,18 @@ function jsonResponse(data) {
   }
 
   // Handler untuk tombol Hapus di modal
-  async function _handleDelete(fileId, projName) {
+  async function _handleDelete(fileId, projName, fileName) {
+    if (!fileId && !fileName) {
+      alert('❗️ Tidak dapat menghapus: ID berkas tidak ditemukan.');
+      return;
+    }
     if (!confirm('Hapus proyek "' + projName + '" dari Google Drive?\n\nData lokal di perangkat ini TIDAK akan dihapus.')) return;
     try {
-      await deleteRemoteProject(fileId);
-      // Refresh daftar
+      await deleteRemoteProject(fileId, fileName);
+      // Refresh daftar proyek setelah penghapusan berhasil
       loadProjectList();
     } catch (err) {
-      alert('Gagal menghapus: ' + err.message);
+      alert('Gagal menghapus: ' + (err.message || err));
     }
   }
 
@@ -655,6 +695,7 @@ function jsonResponse(data) {
     const modalEl = document.getElementById('driveProjectModal');
     if (modalEl) {
       modalEl.classList.remove('is-active');
+      document.documentElement.style.overflow = '';
       document.body.style.overflow = '';
     }
   }

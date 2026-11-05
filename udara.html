@@ -1365,6 +1365,48 @@
       white-space: nowrap;
     }
 
+    /* Sea / Ocean element (Laut / Pantai / Perairan) */
+    .elem-sea {
+      background: rgba(224, 242, 254, 0.92);
+      border: 2px dashed #0284c7;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      padding: 5px;
+    }
+
+    .sea-box {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 2px;
+    }
+
+    .sea-waves {
+      font-size: 13px;
+      line-height: 1;
+      color: #0284c7;
+      opacity: 0.85;
+      pointer-events: none;
+      letter-spacing: 2px;
+    }
+
+    .sea-text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0369a1;
+      padding: 1px 6px;
+      background: rgba(255, 255, 255, 0.85);
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+
     .coord {
       width: 100%;
       border-collapse: collapse;
@@ -1607,7 +1649,8 @@
 
       .elem-road,
       .elem-river,
-      .elem-forest {
+      .elem-forest,
+      .elem-sea {
         box-shadow: none !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
@@ -4254,6 +4297,8 @@
                 title="Tambahkan Label Teks Nama Sungai">🌊 + Label Sungai</button>
               <button type="button" class="st-btn st-btn-forest" onclick="addSketchElement('forest')"
                 title="Tambahkan Area Hutan / Kebun / RTH">🌲 + Hutan/Kebun</button>
+              <button type="button" class="st-btn st-btn-sea" onclick="addSketchElement('sea')"
+                title="Tambahkan Area Laut / Perairan / Garis Pantai">🌊 + Laut</button>
             </div>
             <div class="st-divider"></div>
             <div class="st-grp">
@@ -5238,11 +5283,10 @@
             let left = Math.round(activeDrag.startLeft + dx);
             let top = Math.round(activeDrag.startTop + dy);
 
-            const maxLeft = container.clientWidth - activeDrag.elem.offsetWidth;
-            const maxTop = container.clientHeight - activeDrag.elem.offsetHeight;
-
-            left = Math.max(-20, Math.min(left, maxLeft + 20));
-            top = Math.max(-20, Math.min(top, maxTop + 20));
+            // Allow dragging freely across canvas - keep at least 30px visible
+            const minVisible = 30;
+            left = Math.max(-(activeDrag.elem.offsetWidth - minVisible), Math.min(left, container.clientWidth - minVisible));
+            top = Math.max(-(activeDrag.elem.offsetHeight - minVisible), Math.min(top, container.clientHeight - minVisible));
 
             activeDrag.elem.style.left = left + 'px';
             activeDrag.elem.style.top = top + 'px';
@@ -5353,6 +5397,10 @@
         item.text = customData?.text || 'Hutan / Kebun';
         item.w = customData?.w || 140;
         item.h = customData?.h || 80;
+      } else if (type === 'sea') {
+        item.text = customData?.text || 'Laut';
+        item.w = customData?.w || 160;
+        item.h = customData?.h || 85;
       }
 
       const elem = document.createElement('div');
@@ -5494,6 +5542,15 @@
             <div class="forest-trees">🌲 🌳 🌲</div>
             <div class="elem-flat-text" style="transform: rotate(${-rot}deg); z-index: 2;">
               <span class="elem-editable-text forest-text" contenteditable="true" spellcheck="false" title="Klik 2x untuk edit teks">${escapeHtml(item.text)}</span>
+            </div>
+          </div>
+        `;
+      } else if (item.type === 'sea') {
+        inner = `
+          <div class="sea-box">
+            <div class="sea-waves">≋ 🌊 ≋</div>
+            <div class="elem-flat-text" style="transform: rotate(${-rot}deg); z-index: 2;">
+              <span class="elem-editable-text sea-text" contenteditable="true" spellcheck="false" title="Klik 2x untuk edit teks">${escapeHtml(item.text)}</span>
             </div>
           </div>
         `;
