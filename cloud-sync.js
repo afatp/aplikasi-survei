@@ -19,6 +19,7 @@
 // SCRIPT SINKRONISASI OTOMATIS SURVEI LAPANGAN GOOGLE DRIVE
 // ========================================================
 const FOLDER_NAME = "Data Survei Lapangan";
+let requestStartedAt = Date.now();
 
 function getOrCreateFolder() {
   const folders = DriveApp.getFoldersByName(FOLDER_NAME);
@@ -26,24 +27,29 @@ function getOrCreateFolder() {
   return DriveApp.createFolder(FOLDER_NAME);
 }
 
+function clearListCache() {
+  try { CacheService.getScriptCache().remove('survey-list-v3'); } catch (_) {}
+}
+
 function doPost(e) {
+  requestStartedAt = Date.now();
   try {
     const rawData = e.postData.contents;
     const payload = JSON.parse(rawData);
-    const folder = getOrCreateFolder();
-
     // ----- DELETE ACTION -----
     if (payload.action === 'delete') {
       try {
         if (payload.fileId) {
           const file = DriveApp.getFileById(payload.fileId);
           file.setTrashed(true);
+          clearListCache();
           return jsonResponse({ status: 'success', message: 'File dihapus' });
         } else if (payload.fileName) {
-          const files = folder.getFilesByName(payload.fileName);
+          const files = getOrCreateFolder().getFilesByName(payload.fileName);
           let count = 0;
           while (files.hasNext()) {
             files.next().setTrashed(true);
+            clearListCache();
             count++;
           }
           return jsonResponse({ status: 'success', message: count > 0 ? 'File dihapus' : 'File tidak ditemukan' });
@@ -62,12 +68,17 @@ function doPost(e) {
     const fileName = formType + '_' + project.id + '.json';
     const fileContent = JSON.stringify(project, null, 2);
 
-    const files = folder.getFilesByName(fileName);
+    const files = getOrCreateFolder().getFilesByName(fileName);
+    let savedFile;
     if (files.hasNext()) {
-      files.next().setContent(fileContent);
+      savedFile = files.next();
+      savedFile.setContent(fileContent);
     } else {
-      folder.createFile(fileName, fileContent, MimeType.PLAIN_TEXT);
+      savedFile = getOrCreateFolder().createFile(fileName, fileContent, MimeType.PLAIN_TEXT);
     }
+    // Metadata ringkas: daftar tidak perlu membaca isi formulir/sketsa.
+    savedFile.setDescription(JSON.stringify({ surveyIndex: 1, id: project.id, name: project.name || project.id }));
+    clearListCache();
 
     return jsonResponse({
       status: 'success',
@@ -82,16 +93,46 @@ function doPost(e) {
 }
 
 function doGet(e) {
+  requestStartedAt = Date.now();
   try {
+    const params = (e && e.parameter) || {};
+    if (params.action === 'ping') {
+      return jsonResponse({ status: 'success', apiVersion: 3 });
+    }
+    // Cache singkat mempercepat daftar, termasuk berkas lama tanpa indeks.
+    const cacheable = params.action === 'list' && !params.type;
+    if (cacheable && params.refresh !== '1') {
+      try {
+        const cached = CacheService.getScriptCache().get('survey-list-v3');
+        if (cached) return jsonResponse(JSON.parse(cached));
+      } catch (_) {}
+    }
     const folder = getOrCreateFolder();
-    const files = folder.getFiles();
+    // Cari langsung berkas yang dipilih, bukan membaca semua proyek.
+    const files = params.action === 'get'
+      ? folder.getFilesByName(params.type + '_' + params.projectId + '.json')
+      : folder.getFiles();
     const projects = [];
 
     while (files.hasNext()) {
       const file = files.next();
       if (file.getName().endsWith('.json')) {
+        if (params.type && !file.getName().startsWith(params.type + '_')) continue;
         try {
-          const content = JSON.parse(file.getBlob().getDataAsString());
+          let content;
+          if (params.action === 'list') {
+            let index;
+            try { index = JSON.parse(file.getDescription()); } catch (_) {}
+            if (index && index.surveyIndex === 1 && index.id) {
+              content = { id: index.id, name: index.name };
+            } else {
+              // Berkas lama tetap kompatibel tanpa mengubah data Drive saat GET.
+              const project = JSON.parse(file.getBlob().getDataAsString());
+              content = { id: project.id, name: project.name };
+            }
+          } else {
+            content = JSON.parse(file.getBlob().getDataAsString());
+          }
           projects.push({
             fileName: file.getName(),
             fileId: file.getId(),
@@ -102,17 +143,24 @@ function doGet(e) {
       }
     }
 
-    return jsonResponse({
-      status: 'success',
-      count: projects.length,
-      projects: projects
-    });
+    const result = { status: 'success', apiVersion: 3, count: projects.length, projects: projects };
+    if (cacheable) {
+      try {
+        const encoded = JSON.stringify(result);
+        // Batas CacheService 100 KB; lewati cache jika ringkasan terlalu besar.
+        if (Utilities.newBlob(encoded).getBytes().length < 90000) {
+          CacheService.getScriptCache().put('survey-list-v3', encoded, 60);
+        }
+      } catch (_) {}
+    }
+    return jsonResponse(result);
   } catch (err) {
     return jsonResponse({ status: 'error', message: err.toString() });
   }
 }
 
 function jsonResponse(data) {
+  data.serverMs = Date.now() - requestStartedAt;
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }`;
@@ -197,8 +245,19 @@ function jsonResponse(data) {
   }
 
   // --- Send Data to Google Apps Script Web App ---
+  let lastDriveTiming = null;
+  async function measuredDriveRequest(url, options, action) {
+    const started = Date.now();
+    const response = await fetch(url, options);
+    if (!response.ok && response.status) throw new Error('Google Drive HTTP ' + response.status);
+    const result = await response.json();
+    lastDriveTiming = { action, totalMs: Date.now() - started, serverMs: Number.isFinite(result.serverMs) ? result.serverMs : null };
+    console.info('Durasi Drive', lastDriveTiming);
+    return result;
+  }
+
   async function sendToDrive(url, payload) {
-    const response = await fetch(url, {
+    return measuredDriveRequest(url, {
       method: 'POST',
       mode: 'cors',
       redirect: 'follow',
@@ -206,27 +265,38 @@ function jsonResponse(data) {
         'Content-Type': 'text/plain;charset=utf-8'
       },
       body: JSON.stringify(payload)
-    });
-    return await response.json();
+    }, payload.action || 'save');
   }
 
   // --- Fetch Data from Google Apps Script Web App ---
-  async function fetchFromDrive(url) {
+  // Gabungkan permintaan identik yang masih berjalan (tanpa cache data lama).
+  const pendingReads = new Map();
+  async function fetchFromDrive(url, params = {}) {
+    const query = new URLSearchParams(params);
+    const key = url + '|' + query.toString();
+    if (pendingReads.has(key)) return pendingReads.get(key);
+    const request = readFromDrive(url, query);
+    pendingReads.set(key, request);
+    try { return await request; }
+    finally { pendingReads.delete(key); }
+  }
+
+  async function readFromDrive(url, query) {
+    query.set('t', Date.now());
     const separator = url.includes('?') ? '&' : '?';
-    const targetUrl = url + separator + 't=' + Date.now();
-    const response = await fetch(targetUrl, {
+    const targetUrl = url + separator + query.toString();
+    return measuredDriveRequest(targetUrl, {
       method: 'GET',
       mode: 'cors',
       redirect: 'follow'
-    });
-    return await response.json();
+    }, query.get('action') || 'pull-all');
   }
 
   // --- Test Connection ---
   async function testConnection(url) {
     const targetUrl = url || getUrl();
     if (!targetUrl) throw new Error('URL Google Apps Script belum dimasukkan');
-    const res = await fetchFromDrive(targetUrl);
+    const res = await fetchFromDrive(targetUrl, { action: 'ping' });
     if (res && res.status === 'success') {
       localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
       return res;
@@ -258,6 +328,7 @@ function jsonResponse(data) {
       };
       const res = await sendToDrive(url, payload);
       if (res && res.status === 'success') {
+        invalidateRemoteList();
         localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
         updateBadges();
         if (!options.silent) {
@@ -303,6 +374,7 @@ function jsonResponse(data) {
         };
         const res = await sendToDrive(url, payload);
         if (res && res.status === 'success') {
+          invalidateRemoteList();
           successCount++;
         } else {
           remaining.push(item);
@@ -335,12 +407,11 @@ function jsonResponse(data) {
     }
 
     showToast('⏳ Mengambil data dari Google Drive...', 'warning', 6000);
-    const res = await fetchFromDrive(url);
+    const currentFormType = type || currentType;
+    const res = await fetchFromDrive(url, { type: currentFormType });
     if (!res || res.status !== 'success' || !Array.isArray(res.projects)) {
       throw new Error(res?.message || 'Gagal mengambil data dari Google Drive');
     }
-
-    const currentFormType = type || currentType;
     let mergedCount = 0;
 
     // Filter projects matching this form type (e.g. air_ or udara_)
@@ -390,14 +461,21 @@ function jsonResponse(data) {
   // -----------------------------------------------------------------
   //  NEW: List semua proyek yang ada di Drive
   // -----------------------------------------------------------------
-  async function listRemoteProjects() {
+  let remoteListCache = null;
+  function invalidateRemoteList() { remoteListCache = null; }
+
+  async function listRemoteProjects(options = {}) {
     const url = getUrl();
     if (!url) throw new Error('URL Google Apps Script belum diatur');
     if (!navigator.onLine) throw new Error('Perangkat sedang offline');
+    if (!options.force && remoteListCache && remoteListCache.url === url && Date.now() - remoteListCache.time < 30000) {
+      return remoteListCache.projects;
+    }
     showToast('⏳ Mengambil daftar proyek dari Drive...', 'warning', 6000);
-    const res = await fetchFromDrive(url);
+    const res = await fetchFromDrive(url, options.force ? { action: 'list', refresh: '1' } : { action: 'list' });
     if (!res || res.status !== 'success' || !Array.isArray(res.projects))
       throw new Error(res?.message || 'Gagal mendapatkan daftar proyek dari Drive');
+    remoteListCache = { url, time: Date.now(), projects: res.projects, apiVersion: res.apiVersion || 0 };
     return res.projects;
   }
 
@@ -417,6 +495,10 @@ function jsonResponse(data) {
       }
       throw new Error(msg || 'Gagal menghapus proyek dari Drive');
     }
+    invalidateRemoteList();
+    // Server sudah mengonfirmasi: tidak perlu mengunduh seluruh daftar lagi.
+    _cachedRemoteProjects = _cachedRemoteProjects.filter(p =>
+      fileId ? p.fileId !== fileId : p.fileName !== fileName);
     showToast('🗑️ Proyek berhasil dihapus dari Google Drive', 'success');
     return res;
   }
@@ -430,7 +512,7 @@ function jsonResponse(data) {
     if (!navigator.onLine) throw new Error('Perangkat sedang offline');
 
     showToast('⏳ Mengambil proyek dari Drive...', 'warning', 6000);
-    const res = await fetchFromDrive(url);
+    const res = await fetchFromDrive(url, { action: 'get', type: formType || currentType, projectId });
     if (!res || res.status !== 'success' || !Array.isArray(res.projects))
       throw new Error(res?.message || 'Gagal mengambil data dari Drive');
 
@@ -553,7 +635,7 @@ function jsonResponse(data) {
       // Event: Filter
       modalEl.querySelector('#driveProjectFilterType').addEventListener('change', () => renderProjectList());
       modalEl.querySelector('#driveProjectFilterName').addEventListener('input', () => renderProjectList());
-      modalEl.querySelector('#driveProjectRefreshBtn').addEventListener('click', () => loadProjectList());
+      modalEl.querySelector('#driveProjectRefreshBtn').addEventListener('click', () => loadProjectList(true));
     }
 
     // Tampilkan modal dan kunci scroll latar belakang
@@ -573,14 +655,21 @@ function jsonResponse(data) {
 
   let _cachedRemoteProjects = [];
 
-  async function loadProjectList() {
+  async function loadProjectList(force = false) {
     const container = document.getElementById('driveProjectListContainer');
     if (!container) return;
     container.innerHTML = '<div style="text-align:center;padding:30px;color:#64748b;">⏳ Mengambil data dari Google Drive...</div>';
 
     try {
-      _cachedRemoteProjects = await listRemoteProjects();
+      _cachedRemoteProjects = await listRemoteProjects({ force });
+      const banner = document.getElementById('driveProjectStatusBanner');
+      if (banner) {
+        banner.textContent = remoteListCache && remoteListCache.apiVersion >= 3
+          ? 'Daftar dapat tersimpan sementara hingga 60 detik. Tekan Refresh untuk mengambil perubahan terbaru.'
+          : 'Apps Script belum versi terbaru. Perbarui deployment Google melalui Panduan & Salin Kode agar pemuatan lebih cepat. Publish lingkungan cloud tidak memperbarui Apps Script.';
+      }
       renderProjectList();
+      if (lastDriveTiming && lastDriveTiming.action === 'list') showDriveTiming();
     } catch (err) {
       container.innerHTML = '<div style="text-align:center;padding:30px;color:#ef4444;">❌ ' + err.message + '</div>';
     }
@@ -660,11 +749,21 @@ function jsonResponse(data) {
       .replace(/'/g, '&#039;');
   }
 
+  function showDriveTiming() {
+    const banner = document.getElementById('driveProjectStatusBanner');
+    if (!banner || !lastDriveTiming) return;
+    const t = lastDriveTiming;
+    banner.textContent = banner.textContent.split('\n')[0] + '\nPermintaan Drive: ' + (t.totalMs / 1000).toFixed(1) + ' detik total'
+      + (t.serverMs === null ? '. Durasi server belum tersedia pada deployment ini.'
+        : '; proses server: ' + (t.serverMs / 1000).toFixed(1) + ' detik.');
+  }
+
   // Handler untuk tombol Tarik di modal
   async function _handlePull(projectId, fileName) {
     const ft = fileName.startsWith('air_') ? 'air' : fileName.startsWith('udara_') ? 'udara' : currentType;
     try {
       const result = await pullProject(projectId, ft);
+      showDriveTiming();
       if (result.status === 'ok') {
         if (confirm('Proyek berhasil ditarik! Muat ulang halaman untuk menampilkan data terbaru?')) {
           window.location.reload();
@@ -684,8 +783,8 @@ function jsonResponse(data) {
     if (!confirm('Hapus proyek "' + projName + '" dari Google Drive?\n\nData lokal di perangkat ini TIDAK akan dihapus.')) return;
     try {
       await deleteRemoteProject(fileId, fileName);
-      // Refresh daftar proyek setelah penghapusan berhasil
-      loadProjectList();
+      renderProjectList();
+      showDriveTiming();
     } catch (err) {
       alert('Gagal menghapus: ' + (err.message || err));
     }
@@ -842,7 +941,8 @@ function jsonResponse(data) {
             </div>
             <div class="cloud-accordion-content">
               <ol>
-                <li>Buka <b>script.google.com</b> lalu buat <b>Proyek Baru</b>.</li>
+                <li>Untuk memperbarui koneksi yang sudah ada, buka proyek di <b>script.google.com</b> yang digunakan URL saat ini. Ganti kode, lalu pilih <b>Deploy → Manage deployments → Edit → New version → Deploy</b>. URL tetap sama. Pembaruan ini mempercepat tes koneksi, daftar, dan penarikan proyek serta mendukung hapus.</li>
+                <li>Untuk koneksi baru, buka <b>script.google.com</b> lalu buat <b>Proyek Baru</b>.</li>
                 <li>Hapus kode bawaan, lalu salin dan tempel kode script di bawah ini.</li>
                 <li>Klik tombol <b>Terapkan (Deploy)</b> ➔ <b>Penerapan Baru (New Deployment)</b>.</li>
                 <li>Pilih jenis <b>Aplikasi Web (Web App)</b>, atur <i>Akses</i>: <b>Siapa saja (Anyone)</b>.</li>
@@ -895,7 +995,11 @@ function jsonResponse(data) {
       try {
         const res = await testConnection(url);
         btn.innerHTML = '✅ Terhubung!';
-        showToast('🟢 Berhasil terhubung ke Google Drive!', 'success');
+        if (!res.apiVersion || res.apiVersion < 3) {
+          showToast('Terhubung. Apps Script belum versi terbaru; perbarui deployment Google untuk mempercepat pemuatan.', 'warning', 12000);
+        } else {
+          showToast('🟢 Terhubung ke Google Drive (versi cepat aktif)', 'success');
+        }
         updateBadges();
         // Also flush any pending queue
         flushQueue();
