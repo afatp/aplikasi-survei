@@ -226,3 +226,11 @@
   .sheet{position:relative!important;transform:none!important;width:210mm!important;height:297mm!important}
   .brand-uploaded-logo{display:none}
 }
+
+/* Sembunyikan logo saat cetak tanpa menggeser judul atau isi formulir. */
+@media print {
+  .header img,
+  .brand-uploaded-logo {
+    visibility: hidden !important;
+  }
+}

@@ -665,3 +665,12 @@
   accent-color: #2563eb;
 }
 
+
+/* Tombol dan dialog asisten hanya untuk layar, bukan laporan PDF. */
+@media print {
+  .ai-fab-btn,
+  .ai-modal-overlay,
+  #aiToast {
+    display: none !important;
+  }
+}
